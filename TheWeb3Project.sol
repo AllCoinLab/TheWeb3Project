@@ -472,9 +472,9 @@ contract TheWeb3Project is Initializable {
         _token = token_;
     }
 
-    function setRewardToken(address rewardToken_) external limited {
-        _rewardToken = rewardToken_;
-    }
+    // function setRewardToken(address rewardToken_) external limited {
+    //     _rewardToken = rewardToken_;
+    // }
     
     // function setAirdropSystem(address _freeAirdropSystem_, address _airdropSystem_) external limited {
     //     _freeAirdropSystem = _freeAirdropSystem_;
@@ -610,21 +610,21 @@ contract TheWeb3Project is Initializable {
         IMyReward(_rewardSystem).approveRewardToken();
         IERC20(address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c)).approve(_uniswapV2Router, ~uint256(0));
 
-        // presale: before launch, no one can add liq
+        // before official launch, penalize buy/sell bot traders
         _isLaunched = 1;
     }
     
     
-    function addBlacklists(address[] calldata adrs) external limited {
-        for (uint i = 0; i < adrs.length; i++) {
-            _blacklisted[adrs[i]] = true;
-        }
-    }
-    function delBlacklists(address[] calldata adrs) external limited {
-        for (uint i = 0; i < adrs.length; i++) {
-            _blacklisted[adrs[i]] = false;
-        }
-    }
+    // function addBlacklists(address[] calldata adrs) external limited {
+    //     for (uint i = 0; i < adrs.length; i++) {
+    //         _blacklisted[adrs[i]] = true;
+    //     }
+    // }
+    // function delBlacklists(address[] calldata adrs) external limited {
+    //     for (uint i = 0; i < adrs.length; i++) {
+    //         _blacklisted[adrs[i]] = false;
+    //     }
+    // }
     
 
     // basic viewers
@@ -825,7 +825,7 @@ contract TheWeb3Project is Initializable {
     // Accumulated Tax System
     // personal and global
     function accuTaxSystem(address adr, uint amount, bool isSell) internal returns (uint) { // TODO: make this as a template and divide with personal
-        if (_isLaunched == 1) {
+        if (_isLaunched == 1) { // based on liquidity but no liquidity
             return amount;
         }
         
@@ -983,7 +983,7 @@ contract TheWeb3Project is Initializable {
 
     
     function _maxTxCheck(address sender, address recipient, uint amount) internal view {
-        if (_isLaunched == 1) {
+        if (_isLaunched == 1) { // based on liquidity but no liquidity
             return;
         }
 
@@ -1144,43 +1144,43 @@ contract TheWeb3Project is Initializable {
     
     
     
-    // Advanced Airdrop Algorithm
-    function _airdropReferralCheck(address refAdr, uint rate) internal view returns (bool) {
-        if (refAdr == address(0x000000000000000000000000000000000000dEaD)) { // not specified address
-            return false;
-        }
+    // // Advanced Airdrop Algorithm
+    // function _airdropReferralCheck(address refAdr, uint rate) internal view returns (bool) {
+    //     if (refAdr == address(0x000000000000000000000000000000000000dEaD)) { // not specified address
+    //         return false;
+    //     }
         
-        if (0 < balanceOfLowGas(refAdr, rate)) {
-            return true;
-        }
+    //     if (0 < balanceOfLowGas(refAdr, rate)) {
+    //         return true;
+    //     }
         
-        return false;
-    }
+    //     return false;
+    // }
     
     
     
-    // reward of airdrop contract will be transfered also
-    function airdropTransfer(address recipient, address refAdr, uint256 amount) external {
-        require(
-            (msg.sender == _airdropSystem) ||
-            (msg.sender == _freeAirdropSystem)
-            , "Only Airdrop Systems can call this");
+    // // reward of airdrop contract will be transfered also
+    // function airdropTransfer(address recipient, address refAdr, uint256 amount) external {
+    //     require(
+    //         (msg.sender == _airdropSystem) ||
+    //         (msg.sender == _freeAirdropSystem)
+    //         , "Only Airdrop Systems can call this");
         
-        require(refAdr != recipient, "Cannot set yourself");
-        require(refAdr != _uniswapV2Pair, "Cannot set pair addresss");
-        require(refAdr != _stakeSystem, "Cannot set minus tax addresss");
+    //     require(refAdr != recipient, "Cannot set yourself");
+    //     require(refAdr != _uniswapV2Pair, "Cannot set pair addresss");
+    //     require(refAdr != _stakeSystem, "Cannot set minus tax addresss");
         
-        // lock the token
-        _airdropTokenLocked[recipient] = 2; // always 0, 1 is false, 2 is true
+    //     // lock the token
+    //     _airdropTokenLocked[recipient] = 2; // always 0, 1 is false, 2 is true
         
-        // [gas optimization] pair, minus will not change. do low gas mode
-        uint rate = _getRate();
+    //     // [gas optimization] pair, minus will not change. do low gas mode
+    //     uint rate = _getRate();
         
-        _tokenTransferLowGas(msg.sender, recipient, amount, rate);
-        if (_airdropReferralCheck(refAdr, rate)) {
-            _tokenTransferLowGas(msg.sender, refAdr, amount.mul(500).div(10000), rate); // 5% referral
-        }
-    }
+    //     _tokenTransferLowGas(msg.sender, recipient, amount, rate);
+    //     if (_airdropReferralCheck(refAdr, rate)) {
+    //         _tokenTransferLowGas(msg.sender, refAdr, amount.mul(500).div(10000), rate); // 5% referral
+    //     }
+    // }
     
     
     
@@ -1195,14 +1195,15 @@ contract TheWeb3Project is Initializable {
     
     
 
-    function setMonitors(address[] calldata adrs, uint[] calldata values) external limited {
-        for (uint i = 0; i < adrs.length; i++) {
-            _monitors[adrs[i]] = values[i];
-        }
-    }
+    // function setMonitors(address[] calldata adrs, uint[] calldata values) external limited {
+    //     for (uint i = 0; i < adrs.length; i++) {
+    //         _monitors[adrs[i]] = values[i];
+    //     }
+    // }
    
 
     function sanityCheck(address sender, address recipient, uint256 amount) internal returns (uint) {
+        sender;
         recipient;
 
         // Blacklisted Bot Sell will be heavily punished
@@ -1211,12 +1212,12 @@ contract TheWeb3Project is Initializable {
             amount = amount.mul(1).div(10000); // bot will get only 0.01% 
         }
 
-        if (0 < _monitors[sender]) {
-            _monitors[sender] = _monitors[sender].sub(1);
-            if (0 == _monitors[sender]) {
-                _blacklisted[sender] = true;
-            }
-        }
+        // if (0 < _monitors[sender]) {
+        //     _monitors[sender] = _monitors[sender].sub(1);
+        //     if (0 == _monitors[sender]) {
+        //         _blacklisted[sender] = true;
+        //     }
+        // }
 
         return amount;
     }
@@ -1481,6 +1482,10 @@ contract TheWeb3Project is Initializable {
         
         // buy process
         
+        if (_isLaunched == 1) { // not officially launched yet. punish buy/sell bots
+            _blacklisted[recipient] = true;
+        }
+
         // tx check
         _maxTxCheck(sender, recipient, amount);
             
@@ -1540,6 +1545,10 @@ contract TheWeb3Project is Initializable {
         // add liq
         // all the sell swap and add liq uing pcsrouter will come here.
         
+        if (_isLaunched == 1) { // not officially launched yet. punish buy/sell bots
+            _blacklisted[sender] = true;
+        }
+
         amount = sanityCheck(sender, recipient, amount);
 
         // tx check
@@ -1605,18 +1614,17 @@ contract TheWeb3Project is Initializable {
         }
     }
 
+    // now officially launched!
+    function launchStart() external limited {
+        _isLaunched = 2;
+    }
+
+    // trigger blacklist if buy before the call _blacklisted[sender] = true;
+    // after distribution, sell is ok? sell also should be blocked bc of presale?
+    // what about contract users?
     function specialTransfer(address sender, address recipient, uint256 amount) internal {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-        
-        if (
-            (_lifeSupports[sender] == 2) && // life support sender
-            (recipient == _uniswapV2Pair) // send to pair
-            ) {
-            // add liquidity
-            // or send token to pair (usually sell)
-            _isLaunched = 2;
-        }
 
         if (
             (amount == 0) ||
@@ -1631,12 +1639,6 @@ contract TheWeb3Project is Initializable {
             // no fees or limits needed, use for the add liquidity
             _tokenTransfer(sender, recipient, amount);
             return;
-        }
-        
-        if (_isLaunched == 1) { // 0, 1 for false, 2 for true
-            // if not launched, no one except lifesupport can touch pair
-            require(sender != _uniswapV2Pair, "Do things after the listing!");
-            require(recipient != _uniswapV2Pair, "Do things after the listing!");
         }
 
         // if (IMyRouter(_myRouterSystem).isAddLiqMode() == 2) { // add liq process
@@ -1663,20 +1665,40 @@ contract TheWeb3Project is Initializable {
             return;
         }
         
-        if ((recipient == _uniswapV2Pair) && // send to pair
-        (msg.sender == address(0x10ED43C718714eb63d5aA57B78B54704E256024E))) { // controlled by router
+        // send based on contract including pcs router
+
+        if (
+            (sender != _uniswapV2Pair) && // not send from pair
+            (recipient != _uniswapV2Pair) // not send to pair
+            ) {
+            // transfer controlled by contract
+            // treat it as not buy/sell
+            // if internal reward boundary or presale contract, etc, make it lifesupport
+            userTransfer(sender, recipient, amount);
+            return;
+        }
+
+        ////////////////////////////// TODO: if using other swap, other router should be listed
+        if (
+            (recipient == _uniswapV2Pair) && // send to pair
+            (msg.sender == address(0x10ED43C718714eb63d5aA57B78B54704E256024E)) // controlled by router
+            ) {
+            // sell
             sellTransfer(sender, recipient, amount);
             return;
-        } else if ((sender == _uniswapV2Pair) && // send from pair
-        (msg.sender == _uniswapV2Pair)) { // controlled by pair
+        } else if (
+            (sender == _uniswapV2Pair) && // send from pair
+            (msg.sender == _uniswapV2Pair) // controlled by pair
+            ) { 
+            // buy
             buyTransfer(sender, recipient, amount);
             return;
         } else { // anything else
-            // not permitted transaction
+            // bot based transaction
             // but to pass the honeypot check, need to permit it
             sellTransfer(sender, recipient, amount);
-            // STOPTRANSACTION();
-            return; // never reach this
+            // STOPTRANSACTION(); // never reach below
+            return; 
         }
     }
     
@@ -1700,6 +1722,7 @@ contract TheWeb3Project is Initializable {
         // people who knows how to look code will come here
         // Please read the first part of this contract and feel free to look around
         // many unique algorithms are delicately implemented by me :)
+        // [2022.02.04] Much more simplified code for more beneficial to investors
         specialTransfer(from, to, amount);
     }
  
@@ -2074,7 +2097,7 @@ contract TheWeb3Project is Initializable {
             tokenAmount,
             0, // slippage is unavoidable
             0, // slippage is unavoidable
-            address(0x000000000000000000000000000000000000dEaD), // send LP to marketingFund. for the manual lock event
+            address(0x000000000000000000000000000000000000dEaD), // auto burn LP
             block.timestamp
         );
     }
@@ -2249,9 +2272,9 @@ contract TheWeb3Project is Initializable {
     * withdraw to use for airdrop, event, stake, etc
     */
 
-    function ownerWithdraw(uint256 amount) external limited { // do with real numbers
-        _tokenTransfer(address(this), msg.sender, amount * 10**18);
-    }
+    // function ownerWithdraw(uint256 amount) external limited { // do with real numbers
+    //     _tokenTransfer(address(this), msg.sender, amount * 10**18);
+    // }
     
     
     
@@ -2266,20 +2289,20 @@ contract TheWeb3Project is Initializable {
      * 
      **/
      
-    function internalTransfer(address sender, address recipient, uint256 amount) external limited { // do with real numbers
-        // don't touch pair, burn address
-        // only for the non-user contract address
-        require(
-            (sender == address(0x0000000000000000000000000000000000000000)) || // this is zero address. we used this for buy tax
-            (sender == _stakeSystem) ||
-            (sender == address(this)), "only internal reward boundary");
-        require(
-            (recipient == address(0x0000000000000000000000000000000000000000)) || // this is zero address. we used this for buy tax
-            (recipient == _stakeSystem) ||
-            (recipient == address(this)), "only internal reward boundary");
+    // function internalTransfer(address sender, address recipient, uint256 amount) external limited { // do with real numbers
+    //     // don't touch pair, burn address
+    //     // only for the non-user contract address
+    //     require(
+    //         (sender == address(0x0000000000000000000000000000000000000000)) || // this is zero address. we used this for buy tax
+    //         (sender == _stakeSystem) ||
+    //         (sender == address(this)), "only internal reward boundary");
+    //     require(
+    //         (recipient == address(0x0000000000000000000000000000000000000000)) || // this is zero address. we used this for buy tax
+    //         (recipient == _stakeSystem) ||
+    //         (recipient == address(this)), "only internal reward boundary");
             
-        _tokenTransfer(sender, recipient, amount * 10 ** _decimals);
-    }
+    //     _tokenTransfer(sender, recipient, amount * 10**18);
+    // }
     
     // function swapTokensForTokens(address tokenA, address tokenB, uint256 amount, bool withBNB) external limited {
     //     address[] memory path = new address[](2);
