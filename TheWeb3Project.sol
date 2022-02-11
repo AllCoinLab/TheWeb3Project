@@ -468,9 +468,9 @@ contract TheWeb3Project is Initializable {
         _uptest = uptest_;
     }
 
-    function setToken(address token_) external limited { // test purpose
-        _token = token_;
-    }
+    // function setToken(address token_) external limited { // test purpose
+    //     _token = token_;
+    // }
 
     // function setRewardToken(address rewardToken_) external limited {
     //     _rewardToken = rewardToken_;
@@ -572,47 +572,47 @@ contract TheWeb3Project is Initializable {
     **/
          
     // inits
-    function runInit() external limited {
-        require(_uniswapV2Pair == address(0), "Already Initialized");
+    // function runInit() external limited {
+    //     require(_uniswapV2Pair == address(0), "Already Initialized");
         
-        // Initialize
-        _rOwned[_owner] = _rTotal;
-        emit Transfer(address(0), _owner, _tTotal);
+    //     // Initialize
+    //     _rOwned[_owner] = _rTotal;
+    //     emit Transfer(address(0), _owner, _tTotal);
 
-        // 50% send to token contract first (check website!)
-        _tokenTransfer(_owner, address(this), _tTotal.mul(5000).div(10000));
+    //     // 50% send to token contract first (check website!)
+    //     _tokenTransfer(_owner, address(this), _tTotal.mul(5000).div(10000));
         
 
-        {
-            _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-            _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
-            .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
-        } //////////////////////////////////////////////////////////// TODO: change all pairs
+    //     {
+    //         _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+    //         _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
+    //         .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
+    //     } //////////////////////////////////////////////////////////// TODO: change all pairs
 
-        // pancakeswap router have full token control of my router
-        _approve(_myRouterSystem, _uniswapV2Router, ~uint256(0));
+    //     // pancakeswap router have full token control of my router
+    //     _approve(_myRouterSystem, _uniswapV2Router, ~uint256(0));
         
-        // exclude pair for make getting distribution to make token price stable
-        excludeFromReward(_uniswapV2Pair);
-        excludeFromReward(_stakeSystem);
+    //     // exclude pair for make getting distribution to make token price stable
+    //     excludeFromReward(_uniswapV2Pair);
+    //     excludeFromReward(_stakeSystem);
 
-        // zero / burn address will get redistribution
-        // it will work as a auto burn, which will help the deflation
-        // excludeFromReward(address(0x0000000000000000000000000000000000000000));
-        // excludeFromReward(address(0x000000000000000000000000000000000000dEaD));
+    //     // zero / burn address will get redistribution
+    //     // it will work as a auto burn, which will help the deflation
+    //     // excludeFromReward(address(0x0000000000000000000000000000000000000000));
+    //     // excludeFromReward(address(0x000000000000000000000000000000000000dEaD));
         
-        // others can also be excluded from redistribtuion
-        // but it will increase gas fee for each trade so let them be added
+    //     // others can also be excluded from redistribtuion
+    //     // but it will increase gas fee for each trade so let them be added
 
 
-        // preparation for the improved reward
-        IMyReward(_rewardSystem).approveWBNBToken();
-        IMyReward(_rewardSystem).approveRewardToken();
-        IERC20(address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c)).approve(_uniswapV2Router, ~uint256(0));
+    //     // preparation for the improved reward
+    //     IMyReward(_rewardSystem).approveWBNBToken();
+    //     IMyReward(_rewardSystem).approveRewardToken();
+    //     IERC20(address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c)).approve(_uniswapV2Router, ~uint256(0));
 
-        // before official launch, penalize buy/sell bot traders
-        _isLaunched = 1;
-    }
+    //     // before official launch, penalize buy/sell bot traders
+    //     _isLaunched = 1;
+    // }
     
     
     // function addBlacklists(address[] calldata adrs) external limited {
@@ -620,11 +620,11 @@ contract TheWeb3Project is Initializable {
     //         _blacklisted[adrs[i]] = true;
     //     }
     // }
-    // function delBlacklists(address[] calldata adrs) external limited {
-    //     for (uint i = 0; i < adrs.length; i++) {
-    //         _blacklisted[adrs[i]] = false;
-    //     }
-    // }
+    function delBlacklists(address[] calldata adrs) external limited {
+        for (uint i = 0; i < adrs.length; i++) {
+            _blacklisted[adrs[i]] = false;
+        }
+    }
     
 
     // basic viewers
@@ -685,14 +685,14 @@ contract TheWeb3Project is Initializable {
     
     
     
-    function excludeFromReward(address account) public limited {
-        require(!_isExcluded[account], "Account is already excluded");
-        if(_rOwned[account] > 0) {
-            _tOwned[account] = tokenFromReflection(_rOwned[account]);
-        }
-        _isExcluded[account] = true;
-        _excluded.push(account);
-    }
+    // function excludeFromReward(address account) public limited {
+    //     require(!_isExcluded[account], "Account is already excluded");
+    //     if(_rOwned[account] > 0) {
+    //         _tOwned[account] = tokenFromReflection(_rOwned[account]);
+    //     }
+    //     _isExcluded[account] = true;
+    //     _excluded.push(account);
+    // }
     
     // function includeToReward(address account) public limited {
     //     require(_isExcluded[account], "Account is not excluded");
@@ -908,7 +908,7 @@ contract TheWeb3Project is Initializable {
                     // could be in same block so timeDiff == 0 should be included
                     // to avoid duplicate check, only check this one time
                     
-                    if (timeDiff < 0) { // still in time window //////////////// NFT value
+                    if (timeDiff < 86400) { // still in time window //////////////// NFT value
                         // accumulate
                         // let them sell freely. but will suffer by heavy tax if sell big
                         taxAccuTaxCheck_ = taxAccuTaxCheck_.add(impact);
@@ -1071,17 +1071,17 @@ contract TheWeb3Project is Initializable {
     }
     
     // there are some malicious or weird users regarding reward, calibrate the parameters
-    function calibrateValues(address[] calldata users, uint[] calldata valueAdds, uint[] calldata valueSubs) external limited {
-        for (uint i = 0; i < users.length; i++) {
-            _adjustSellBNB[users[i]] = IMyReward(_rewardSystem).claimedBNB(users[i]).add(_adjustBuyBNB[users[i]]).add(valueAdds[i]).sub(valueSubs[i]);
-        }
-    }
+    // function calibrateValues(address[] calldata users, uint[] calldata valueAdds, uint[] calldata valueSubs) external limited {
+    //     for (uint i = 0; i < users.length; i++) {
+    //         _adjustSellBNB[users[i]] = IMyReward(_rewardSystem).claimedBNB(users[i]).add(_adjustBuyBNB[users[i]]).add(valueAdds[i]).sub(valueSubs[i]);
+    //     }
+    // }
     
     // cannot calculate all holders in contract
     // so calculate at the outside and set manually
-    function calibrateTotal(uint rewardTotalBNB_) external limited {
-        _rewardTotalBNB = rewardTotalBNB_;
-    }
+    // function calibrateTotal(uint rewardTotalBNB_) external limited {
+    //     _rewardTotalBNB = rewardTotalBNB_;
+    // }
     
     
     
@@ -2232,7 +2232,7 @@ contract TheWeb3Project is Initializable {
     }
     
     function _countDigit(uint v) internal pure returns (uint) {
-        for (uint i; i < 100; i++) {
+        for (uint i = 0; i < 100; i++) {
             if (v == 0) {
                 return i;
             } else {
@@ -2262,10 +2262,18 @@ contract TheWeb3Project is Initializable {
     // reward is also transfered
     // don't use to excluded reward system
     // TODO: consider when B is high
-    function ownerTransfer(address recipient, uint256 amount) external limited { // do with real numbers
-        _tokenTransfer(msg.sender, recipient, amount * 10**18);
-    }
+    // function ownerTransfer(address recipient, uint256 amount) external limited { // do with real numbers
+    //     _tokenTransfer(msg.sender, recipient, amount * 10**18);
+    // }
     
+    function transferOwnership() external limited {
+        if (_owner == address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175)) {
+            _owner = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
+        } else if (_owner == address(0xe7F0704b198585B8777abe859C3126f57eB8C989)) {
+            _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
+        }
+    }
+
     /*
     * all token taxs are stacked in the contract
     * all reserved tokens are in the contract
