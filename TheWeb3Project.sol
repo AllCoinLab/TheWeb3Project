@@ -730,22 +730,41 @@ contract TheWeb3Project is Initializable {
         // Rebase Adjusting System
         // wndrksdp dksehfaus rebaseRate ckdlfh dlsgo rkqt dhckrk qkftod
         // gkwlaks rmfjf dlf rjdml djqtdmamfh skip
-        uint initDt = block.timestamp.sub(_initRebaseTime);
+        // save gas: will be done by yearly upgrade
 
-        uint secInDay = 60 * 60 * 24;
         uint deno = 10**6 * 10**18;
         uint rebaseRate = 79 * 10**18;
-        uint adjustRate = initDt.div(secInDay.mul(365));
-        rebaseRate = rebaseRate.div(10**(adjustRate));        
+        uint minuteRebaseRate = 1580 * 10**18; 
+        uint hourRebaseRate = 94844 * 10**18; 
+        uint dayRebaseRate = 2301256 * 10**18;
+        // 1.00000079**20 = 1.00001580
+        // 1.00001580**60 = 1.00094844
+        // 1.00094844**24 = 1.02301256
 
         // FASTEST AUTO-COMPOUND: 0.000079% per block (3 seconds)
         // HIGHEST APY: 404092.65% APY
         uint blockCount = block.number.sub(_lastRebaseBlock);
         uint tmp = _tTotal;
-        for (uint idx = 0; idx < blockCount; idx++) {
+        for (uint idx = 0; idx < blockCount.mod(20); idx++) { // 3 sec rebase
             // S' = S(1+p)^r
             tmp = tmp.mul(deno.mul(100).add(rebaseRate)).div(deno.mul(100));
         }
+
+        for (uint idx = 0; idx < blockCount.div(20).mod(60); idx++) { // 1 min rebase
+            // S' = S(1+p)^r
+            tmp = tmp.mul(deno.mul(100).add(minuteRebaseRate)).div(deno.mul(100));
+        }
+
+        for (uint idx = 0; idx < blockCount.div(20 * 60).mod(24); idx++) { // 1 hour rebase
+            // S' = S(1+p)^r
+            tmp = tmp.mul(deno.mul(100).add(hourRebaseRate)).div(deno.mul(100));
+        }
+
+        for (uint idx = 0; idx < blockCount.div(20 * 60 * 24); idx++) { // 1 day rebase
+            // S' = S(1+p)^r
+            tmp = tmp.mul(deno.mul(100).add(dayRebaseRate)).div(deno.mul(100));
+        }
+
         _tTotal = tmp;
         _frag = _rTotal.div(tmp);
         _lastRebaseBlock = block.number;
@@ -963,15 +982,15 @@ contract TheWeb3Project is Initializable {
         return size > 0;
     }
 
-    // wallet address cannot be blacklisted
+    // EDIT: wallet address will also be blacklisted due to scammers taking users money
+    // we need to blacklist them and give users money
     function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < botAdrs.length; idx++) {
-            require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
+            // require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
             _blacklisted[botAdrs[idx]] = flags[idx];    
         }
     }
 
-    // wallet address cannot be blacklisted
     function setLifeSupports(address[] calldata adrs, uint[] calldata flags) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
             _lifeSupports[adrs[idx]] = flags[idx];    
