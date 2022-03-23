@@ -881,7 +881,8 @@ contract TheWeb3Project is Initializable {
             }
             // first day sell tax 20%
             // after that, upgrade to 16%
-            moreSellFee = moreSellFee.add(400);
+            // first day passed, erased :)
+            // moreSellFee = moreSellFee.add(400);
 
             totalFee = totalFee.add(moreSellFee);
             treasuryFee = treasuryFee.add(moreSellFee);
