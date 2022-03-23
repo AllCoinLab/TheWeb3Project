@@ -355,7 +355,9 @@ contract TheWeb3Project is Initializable {
          **/
 
         _name = "The Web3 Project";
+        // _name = "TEST"; // CHANGE LIQ AND THINGS
         _symbol = "WEB3";
+        // _symbol = "TEST";
         _decimals = 18;
 
         /**
@@ -405,7 +407,8 @@ contract TheWeb3Project is Initializable {
 
         // manual fix
         _tOwned[_treasury] = _rTotal;
-        
+        emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
+
         _initRebaseTime = block.timestamp;
         // _lastRebaseTime = block.timestamp;
         _lastRebaseBlock = block.number;
@@ -418,13 +421,15 @@ contract TheWeb3Project is Initializable {
 
     // can only start, not stop
     function startRebase() external limited {
-        _initRebaseTime = block.timestamp;
+        // _initRebaseTime = block.timestamp;
+        // _lastRebaseBlock = block.number;
         _rebaseStarted = true;
     }
-    
 
-
-
+    // anyone can trigger this :) more frequent updates
+    function manualRebase() external {
+        _rebase();
+    }
 
     ////////////////////////////////////////// basics
     
@@ -504,7 +509,7 @@ contract TheWeb3Project is Initializable {
             return;
         }
             
-        require(_buySellTimer[target] + 10 <= block.timestamp, "No sequential bot related process allowed");
+        require(_buySellTimer[target] + 60 <= block.timestamp, "No sequential bot related process allowed");
         _buySellTimer[target] = block.timestamp; ///////////////////// NFT values
     }
     //////////////////////////////////////////
@@ -541,7 +546,7 @@ contract TheWeb3Project is Initializable {
 
 
     ////////////////////////////////////////// checks
-    function _getLiquidityImpact(uint r1, uint amount) internal view returns (uint) {
+    function _getLiquidityImpact(uint r1, uint amount) internal pure returns (uint) {
         if (r1 == 0) {
           return 0;
         }
@@ -556,7 +561,7 @@ contract TheWeb3Project is Initializable {
         return impact;
     }
 
-    function _maxTxCheck(address sender, address recipient, uint r1, uint amount) internal view {
+    function _maxTxCheck(address sender, address recipient, uint r1, uint amount) internal pure {
         sender;
         recipient;
 
@@ -648,6 +653,7 @@ contract TheWeb3Project is Initializable {
               antiBotSystem(recipient);
             }
           }
+          amount = sanityCheck(sender, recipient, amount);
         }
 
         if (sender != pair) { // not buy, remove liq, etc    
@@ -675,7 +681,7 @@ contract TheWeb3Project is Initializable {
         _tOwned[sender] = _tOwned[sender].sub(fAmount);
         _tOwned[recipient] = _tOwned[recipient].add(fAmount);
 
-        emit Transfer(sender, recipient, amount);
+        emit Transfer(sender, recipient, amount); // fAmount.div(_frag)
 
         return;
     }
@@ -717,7 +723,7 @@ contract TheWeb3Project is Initializable {
         }
 
    
-        if (_tTotal == _MAX_TOTAL_SUPPLY) {
+        if (_MAX_TOTAL_SUPPLY <= _tTotal) {
             return;
         }
 
@@ -777,7 +783,7 @@ contract TheWeb3Project is Initializable {
         // save gas
         uint liquifierFee = _liquifierFee;
         uint stabilizerFee = _stabilizerFee;
-        uint treasuryFee = _treasuryFee;
+        uint treasuryFee = _treasuryFee.add(_moreSellFee); // handle sell case
         uint blackHoleFee = _blackHoleFee;
 
         // liquidity half
@@ -804,7 +810,7 @@ contract TheWeb3Project is Initializable {
     // djqtdmaus rPthr tlehgkrpehla
     function _addBigLiquidity(uint r1) internal { // should have _lastLiqTime but it will update at start
         r1;
-        if (block.number < _lastLiqTime.add(20 * 60 * 24)) {
+        if (block.number < _lastLiqTime.add(20 * 60 * 24)) { // 20 * 60 * 24 CHANGE THIS!
             return;
         }
 
@@ -821,8 +827,9 @@ contract TheWeb3Project is Initializable {
             return;
         }
 
-        _tOwned[_liquifier] = 1; // save gas
+        _tOwned[_liquifier] = _tOwned[_liquifier].sub(liqBalance);
         _tOwned[address(this)] = _tOwned[address(this)].add(liqBalance);
+        emit Transfer(_liquifier, address(this), liqBalance.div(_frag));
 
         uint tokenAmount = liqBalance.div(_frag);
         uint ethAmount = address(this).balance;
@@ -846,13 +853,17 @@ contract TheWeb3Project is Initializable {
         uint blackHoleFee = _blackHoleFee;
 
         uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = _moreSellFee; // save gas
             {
               uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag));
               moreSellFee = moreSellFee.add(impactFee);
             }
-            
+            // first day sell tax 20%
+            // after that, upgrade to 16%
+            moreSellFee = moreSellFee.add(400);
+
             totalFee = totalFee.add(moreSellFee);
             treasuryFee = treasuryFee.add(moreSellFee);
         }
@@ -864,7 +875,6 @@ contract TheWeb3Project is Initializable {
         }
         {
             uint fAmount_ = fAmount.div(10000).mul(totalFee.sub(liquifierFee.div(2)));
-
             _tOwned[address(this)] = _tOwned[address(this)].add(fAmount_);
             emit Transfer(sender, address(this), fAmount_.div(_frag));
         }
