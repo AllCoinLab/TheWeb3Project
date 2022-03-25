@@ -653,11 +653,11 @@ contract TheWeb3Project is Initializable {
               antiBotSystem(recipient);
             }
           }
-          amount = sanityCheck(sender, recipient, amount);
         }
 
         if (sender != pair) { // not buy, remove liq, etc    
           _addBigLiquidity(r1);
+          amount = sanityCheck(sender, recipient, amount);
         }
 
         amount = amount.sub(1);
