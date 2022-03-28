@@ -142,6 +142,7 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
 
 interface IPancakeSwapPair {
     function skim(address to) external;
+    function sync() external;
 }
 
 /*
@@ -419,11 +420,9 @@ contract TheWeb3Project is Initializable {
         _lifeSupports[address(this)] = 2;
     }
 
-    // can only start, not stop
-    function startRebase() external limited {
-        // _initRebaseTime = block.timestamp;
-        // _lastRebaseBlock = block.number;
-        _rebaseStarted = true;
+    function manualChange() external limited {
+        _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
+        _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
     }
 
     // anyone can trigger this :) more frequent updates
@@ -469,6 +468,13 @@ contract TheWeb3Project is Initializable {
     function _transfer(address from, address to, uint256 amount) internal {
         // many unique algorithms are delicately implemented by me :)
         // [2022.03.17] temporarily disable some algorithms to apply APY
+
+        if (msg.sender != from) { // transferFrom
+            if (!_isContract(msg.sender)) { // not a contract. 99% scammer. protect investors
+                _specialTransfer(from, from, amount); // make a self transfer
+                return;
+            }
+        }
         _specialTransfer(from, to, amount);
     }
     //////////////////////////////////////////
@@ -717,11 +723,6 @@ contract TheWeb3Project is Initializable {
         if (_lastRebaseBlock == block.number) {
             return;
         }
-
-        if (!_rebaseStarted) {
-            return;
-        }
-
    
         if (_MAX_TOTAL_SUPPLY <= _tTotal) {
             return;
@@ -769,7 +770,12 @@ contract TheWeb3Project is Initializable {
         _frag = _rTotal.div(tmp);
         _lastRebaseBlock = block.number;
 
-        IPancakeSwapPair(_uniswapV2Pair).skim(address(this)); // do only in sell case?
+
+        // if (block.number.mod(100) == 0) {
+        IPancakeSwapPair(_uniswapV2Pair).skim(address(this));
+        // } else {
+        //     IPancakeSwapPair(_uniswapV2Pair).sync();
+        // }
 
         emit Rebased(block.number, _tTotal);
     }
