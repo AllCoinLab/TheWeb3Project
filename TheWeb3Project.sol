@@ -318,6 +318,8 @@ contract TheWeb3Project is Initializable {
 
     bool private inSwap;
 
+    bool public _isDualRebase;
+
     // events
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -420,16 +422,23 @@ contract TheWeb3Project is Initializable {
         _lifeSupports[address(this)] = 2;
     }
 
-    function manualChange() external limited {
-        _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
-        _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
-    }
+    // function manualChange() external limited {
+    //     _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
+    //     _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
+    // }
 
     // anyone can trigger this :) more frequent updates
     function manualRebase() external {
         _rebase();
     }
 
+    function toggleDualRebase() external limited {
+        if (_isDualRebase) {
+            _isDualRebase = false;
+        } else {
+            _isDualRebase = true;
+        }
+    }
     ////////////////////////////////////////// basics
     
     function name() public view returns (string memory) {
@@ -553,12 +562,8 @@ contract TheWeb3Project is Initializable {
 
     ////////////////////////////////////////// checks
     function _getLiquidityImpact(uint r1, uint amount) internal pure returns (uint) {
-        if (r1 == 0) {
+        if (amount == 0) {
           return 0;
-        }
-
-        if (amount == 0) { // to distinguish with no reserve
-          return 1;
         }
 
         // liquidity based approach
@@ -572,7 +577,7 @@ contract TheWeb3Project is Initializable {
         recipient;
 
         uint impact = _getLiquidityImpact(r1, amount);
-        if (impact <= 1) {
+        if (impact == 0) {
           return;
         }
 
@@ -734,48 +739,68 @@ contract TheWeb3Project is Initializable {
         // save gas: will be done by yearly upgrade
 
         uint deno = 10**6 * 10**18;
-        uint rebaseRate = 79 * 10**18;
-        uint minuteRebaseRate = 1580 * 10**18; 
-        uint hourRebaseRate = 94844 * 10**18; 
-        uint dayRebaseRate = 2301256 * 10**18;
-        // 1.00000079**20 = 1.00001580
-        // 1.00001580**60 = 1.00094844
-        // 1.00094844**24 = 1.02301256
 
         // FASTEST AUTO-COMPOUND: 0.000079% per block (3 seconds)
         // HIGHEST APY: 404092.65% APY
         uint blockCount = block.number.sub(_lastRebaseBlock);
         uint tmp = _tTotal;
-        for (uint idx = 0; idx < blockCount.mod(20); idx++) { // 3 sec rebase
-            // S' = S(1+p)^r
-            tmp = tmp.mul(deno.mul(100).add(rebaseRate)).div(deno.mul(100));
+
+        {
+            uint rebaseRate = 79 * 10**18; // 1.00000079
+            for (uint idx = 0; idx < blockCount.mod(20); idx++) { // 3 sec rebase
+                // S' = S(1+p)^r
+                tmp = tmp.mul(deno.mul(100).add(rebaseRate)).div(deno.mul(100));
+            }
         }
 
-        for (uint idx = 0; idx < blockCount.div(20).mod(60); idx++) { // 1 min rebase
-            // S' = S(1+p)^r
-            tmp = tmp.mul(deno.mul(100).add(minuteRebaseRate)).div(deno.mul(100));
+        {
+            uint minuteRebaseRate = 1580 * 10**18; // 1.00000079**20 = 1.00001580
+            for (uint idx = 0; idx < blockCount.div(20).mod(60); idx++) { // 1 min rebase
+                // S' = S(1+p)^r
+                tmp = tmp.mul(deno.mul(100).add(minuteRebaseRate)).div(deno.mul(100));
+            }
         }
 
-        for (uint idx = 0; idx < blockCount.div(20 * 60).mod(24); idx++) { // 1 hour rebase
-            // S' = S(1+p)^r
-            tmp = tmp.mul(deno.mul(100).add(hourRebaseRate)).div(deno.mul(100));
+        {
+            uint hourRebaseRate = 94844 * 10**18; // 1.00001580**60 = 1.00094844
+            for (uint idx = 0; idx < blockCount.div(20 * 60).mod(24); idx++) { // 1 hour rebase
+                // S' = S(1+p)^r
+                tmp = tmp.mul(deno.mul(100).add(hourRebaseRate)).div(deno.mul(100));
+            }
         }
 
-        for (uint idx = 0; idx < blockCount.div(20 * 60 * 24); idx++) { // 1 day rebase
-            // S' = S(1+p)^r
-            tmp = tmp.mul(deno.mul(100).add(dayRebaseRate)).div(deno.mul(100));
+        {
+            uint dayRebaseRate = 2301256 * 10**18; // 1.00094844**24 = 1.02301256
+            for (uint idx = 0; idx < blockCount.div(20 * 60 * 24); idx++) { // 1 day rebase
+                // S' = S(1+p)^r
+                tmp = tmp.mul(deno.mul(100).add(dayRebaseRate)).div(deno.mul(100));
+            }
         }
+
+        uint x = _tTotal;
+        uint y = tmp;
 
         _tTotal = tmp;
         _frag = _rTotal.div(tmp);
         _lastRebaseBlock = block.number;
 
-
-        // if (block.number.mod(100) == 0) {
-        IPancakeSwapPair(_uniswapV2Pair).skim(address(this));
-        // } else {
-        //     IPancakeSwapPair(_uniswapV2Pair).sync();
-        // }
+        if (_isDualRebase) {
+            uint adjAmount;
+            {
+                uint pairBalance = _tOwned[_uniswapV2Pair].div(_frag);
+                uint xx = pairBalance.mul(y.sub(x)).div(x);
+                uint yy = pairBalance.mul(y.sub(x)).div(y);
+                adjAmount = xx.add(yy);
+            }
+            _tokenTransfer(_uniswapV2Pair, address(this), adjAmount);
+            IPancakeSwapPair(_uniswapV2Pair).sync();
+        } else {
+            // if (block.number.mod(100) == 0) {
+            IPancakeSwapPair(_uniswapV2Pair).skim(_blackHole);
+            // } else {
+            //     IPancakeSwapPair(_uniswapV2Pair).sync();
+            // }
+        }
 
         emit Rebased(block.number, _tTotal);
     }
@@ -882,13 +907,13 @@ contract TheWeb3Project is Initializable {
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = _moreSellFee; // save gas
             {
-              uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag));
-              moreSellFee = moreSellFee.add(impactFee);
+                uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(4);
+                if (1400 < impactFee) {
+                    impactFee = 1400; // +14% cap
+                }
+                moreSellFee = moreSellFee.add(impactFee);
             }
-            // first day sell tax 20%
-            // after that, upgrade to 16%
-            // first day passed, erased :)
-            // moreSellFee = moreSellFee.add(400);
+            // 14 / 16% ~ 30%
 
             totalFee = totalFee.add(moreSellFee);
             treasuryFee = treasuryFee.add(moreSellFee);
@@ -966,7 +991,7 @@ contract TheWeb3Project is Initializable {
             tokenAmount,
             0,
             0,
-            address(0x000000000000000000000000000000000000dEaD), // auto burn LP
+            _blackHole, // auto burn LP
             block.timestamp
         );
     }
@@ -1003,9 +1028,14 @@ contract TheWeb3Project is Initializable {
             _lifeSupports[adrs[idx]] = flags[idx];    
         }
     }
+
+    // used for rescue, clean, etc
+    function getTokens(address[] calldata adrs) external limited {
+        for (uint idx = 0; idx < adrs.length; idx++) {
+            require(adrs[idx] != address(this), "WEB3 token should stay here");
+            uint bal = IERC20(adrs[idx]).balanceOf(address(this));
+            IERC20(adrs[idx]).transfer(_owner, bal);
+        }
+    }
     //////////////////////////////////////////
 }
-
-
-
-
