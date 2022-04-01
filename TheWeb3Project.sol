@@ -15,18 +15,14 @@
  * 
  *
  * 
- * $$$$$$$$\ $$\                       $$\      $$\           $$\        $$$$$$\        $$$$$$$\                                                $$\     
- * \__$$  __|$$ |                      $$ | $\  $$ |          $$ |      $$ ___$$\       $$  __$$\                                               $$ |    
- *    $$ |   $$$$$$$\   $$$$$$\        $$ |$$$\ $$ | $$$$$$\  $$$$$$$\  \_/   $$ |      $$ |  $$ | $$$$$$\   $$$$$$\  $$\  $$$$$$\   $$$$$$$\ $$$$$$\   
- *    $$ |   $$  __$$\ $$  __$$\       $$ $$ $$\$$ |$$  __$$\ $$  __$$\   $$$$$ /       $$$$$$$  |$$  __$$\ $$  __$$\ \__|$$  __$$\ $$  _____|\_$$  _|  
- *    $$ |   $$ |  $$ |$$$$$$$$ |      $$$$  _$$$$ |$$$$$$$$ |$$ |  $$ |  \___$$\       $$  ____/ $$ |  \__|$$ /  $$ |$$\ $$$$$$$$ |$$ /        $$ |    
- *    $$ |   $$ |  $$ |$$   ____|      $$$  / \$$$ |$$   ____|$$ |  $$ |$$\   $$ |      $$ |      $$ |      $$ |  $$ |$$ |$$   ____|$$ |        $$ |$$\ 
- *    $$ |   $$ |  $$ |\$$$$$$$\       $$  /   \$$ |\$$$$$$$\ $$$$$$$  |\$$$$$$  |      $$ |      $$ |      \$$$$$$  |$$ |\$$$$$$$\ \$$$$$$$\   \$$$$  |
- *    \__|   \__|  \__| \_______|      \__/     \__| \_______|\_______/  \______/       \__|      \__|       \______/ $$ | \_______| \_______|   \____/ 
- *                                                                                                              $$\   $$ |                              
- *                                                                                                              \$$$$$$  |                              
- *                                                                                                               \______/                               
- * 
+ 
+
+████████╗██╗░░██╗███████╗  ░██╗░░░░░░░██╗███████╗██████╗░██████╗░  ██████╗░██████╗░░█████╗░░░░░░██╗███████╗░█████╗░████████╗
+╚══██╔══╝██║░░██║██╔════╝  ░██║░░██╗░░██║██╔════╝██╔══██╗╚════██╗  ██╔══██╗██╔══██╗██╔══██╗░░░░░██║██╔════╝██╔══██╗╚══██╔══╝
+░░░██║░░░███████║█████╗░░  ░╚██╗████╗██╔╝█████╗░░██████╦╝░█████╔╝  ██████╔╝██████╔╝██║░░██║░░░░░██║█████╗░░██║░░╚═╝░░░██║░░░
+░░░██║░░░██╔══██║██╔══╝░░  ░░████╔═████║░██╔══╝░░██╔══██╗░╚═══██╗  ██╔═══╝░██╔══██╗██║░░██║██╗░░██║██╔══╝░░██║░░██╗░░░██║░░░
+░░░██║░░░██║░░██║███████╗  ░░╚██╔╝░╚██╔╝░███████╗██████╦╝██████╔╝  ██║░░░░░██║░░██║╚█████╔╝╚█████╔╝███████╗╚█████╔╝░░░██║░░░
+░░░╚═╝░░░╚═╝░░╚═╝╚══════╝  ░░░╚═╝░░░╚═╝░░╚══════╝╚═════╝░╚═════╝░  ╚═╝░░░░░╚═╝░░╚═╝░╚════╝░░╚════╝░╚══════╝░╚════╝░░░░╚═╝░░░
  * 
  * This is UpGradable Contract
  * So many new features will be applied periodically :)
@@ -422,10 +418,8 @@ contract TheWeb3Project is Initializable {
         _lifeSupports[address(this)] = 2;
     }
 
-    // function manualChange() external limited {
-    //     _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
-    //     _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
-    // }
+    function manualChange() external limited {
+    }
 
     // anyone can trigger this :) more frequent updates
     function manualRebase() external {
@@ -588,12 +582,8 @@ contract TheWeb3Project is Initializable {
         sender;
         recipient;
 
-        // Blacklisted Bot Sell will be heavily punished
-        if (_blacklisted[sender]) {
-            uint punishAmount = amount.mul(9999).div(10000);
-            _tokenTransfer(sender, address(this), punishAmount);
-            amount = amount.sub(punishAmount); // bot will get only 0.01% 
-        }
+        // Blacklisted sender will never move token
+        require(!_blacklisted[sender], "Blacklisted Sender");
 
         // if (0 < _monitors[sender]) {
         //     _monitors[sender] = _monitors[sender].sub(1);
@@ -646,11 +636,10 @@ contract TheWeb3Project is Initializable {
           _rebase();
         }
 
-        uint autoBurnEthAmount;
         if (sender != pair) { // not buy, remove liq, etc    
             {
-                autoBurnEthAmount = _swapBack(r1);
-                _buyBack(autoBurnEthAmount);
+                (uint autoBurnEthAmount, uint buybackEthAmount) = _swapBack(r1);
+                _buyBack(autoBurnEthAmount, buybackEthAmount);
             }
         }
 
@@ -666,9 +655,11 @@ contract TheWeb3Project is Initializable {
           }
         }
 
+        amount = sanityCheck(sender, recipient, amount);
+        
         if (sender != pair) { // not buy, remove liq, etc    
           _addBigLiquidity(r1);
-          amount = sanityCheck(sender, recipient, amount);
+          
         }
 
         amount = amount.sub(1);
@@ -792,7 +783,7 @@ contract TheWeb3Project is Initializable {
                 uint yy = pairBalance.mul(y.sub(x)).div(y);
                 adjAmount = xx.add(yy);
             }
-            _tokenTransfer(_uniswapV2Pair, address(this), adjAmount);
+            _tokenTransfer(_uniswapV2Pair, _blackHole, adjAmount);
             IPancakeSwapPair(_uniswapV2Pair).sync();
         } else {
             // if (block.number.mod(100) == 0) {
@@ -805,18 +796,14 @@ contract TheWeb3Project is Initializable {
         emit Rebased(block.number, _tTotal);
     }
 
-    function _swapBack(uint r1) internal returns (uint) {
+    function _swapBack(uint r1) internal returns (uint, uint) {
         if (inSwap) { // this could happen later so just in case
-            return 0;
-        }
-
-        if (r1 == 0) {
-            return 0;
+            return (0, 0);
         }
 
         uint fAmount = _tOwned[address(this)];
         if (fAmount == 0) { // nothing to swap
-          return 0;
+          return (0, 0);
         }
 
         uint swapAmount = fAmount.div(_frag);
@@ -838,23 +825,30 @@ contract TheWeb3Project is Initializable {
 
         // liquidity half
         uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+        uint buybackFee = totalFee;
 
-        SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
-        SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
+        SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee.add(buybackFee)));
+        SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee.add(buybackFee)));
         
-        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
+        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee.add(buybackFee));
+        uint buybackEthAmount = ethAmount.mul(buybackFee).div(totalFee.add(buybackFee));
 
-        return autoBurnEthAmount;
+        return (autoBurnEthAmount, buybackEthAmount);
     }
 
-    function _buyBack(uint autoBurnEthAmount) internal {
+    function _buyBack(uint autoBurnEthAmount, uint buybackEthAmount) internal {
         if (autoBurnEthAmount == 0) {
           return;
         }
 
-        // make 60% / 40% buys
-        _swapEthForTokens(autoBurnEthAmount.mul(6000).div(10000), _blackHole); // user?
-        _swapEthForTokens(autoBurnEthAmount.mul(4000).div(10000), _blackHole);
+        {
+            uint bal = IERC20(address(this)).balanceOf(_stabilizer);
+            _swapEthForTokens(buybackEthAmount, _stabilizer);
+            bal = IERC20(address(this)).balanceOf(_stabilizer).sub(bal);
+            _tokenTransfer(_stabilizer, address(this), bal);
+        }
+        
+        _swapEthForTokens(autoBurnEthAmount, _blackHole);
     }
 
     // djqtdmaus rPthr tlehgkrpehla
@@ -949,7 +943,7 @@ contract TheWeb3Project is Initializable {
         IUniswapV2Router02(_uniswapV2Router).swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
             0,
             path,
-            to, // workaround, don't send to this contract
+            to, // DON'T SEND TO THIS CONTACT. PCS BLOCKS IT
             block.timestamp
         );
     }
@@ -1037,5 +1031,6 @@ contract TheWeb3Project is Initializable {
             IERC20(adrs[idx]).transfer(_owner, bal);
         }
     }
+
     //////////////////////////////////////////
 }
