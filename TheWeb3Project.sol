@@ -370,53 +370,53 @@ contract TheWeb3Project is Initializable {
     }
 
     // inits
-    function runInit() external limited {
-        require(_stabilizer != address(0xe7F0704b198585B8777abe859C3126f57eB8C989), "Already Initialized");
+    // function runInit() external limited {
+    //     require(_stabilizer != address(0xe7F0704b198585B8777abe859C3126f57eB8C989), "Already Initialized");
 
-        //////// TEMP
-        {
-          _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-          _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
-          .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
-        } //////////////////////////////////////////////////////////// TODO: change all pairs
+    //     //////// TEMP
+    //     {
+    //       _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+    //       _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
+    //       .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
+    //     } //////////////////////////////////////////////////////////// TODO: change all pairs
 
-        MAX = ~uint256(0);
-        _INIT_TOTAL_SUPPLY = 100 * 10**3 * 10**_decimals; // 100,000 $WEB3
-        _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**4; // 1,000,000,000 $WEB3 (x10000)
-        _rTotal = (MAX - (MAX % _INIT_TOTAL_SUPPLY));
+    //     MAX = ~uint256(0);
+    //     _INIT_TOTAL_SUPPLY = 100 * 10**3 * 10**_decimals; // 100,000 $WEB3
+    //     _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**4; // 1,000,000,000 $WEB3 (x10000)
+    //     _rTotal = (MAX - (MAX % _INIT_TOTAL_SUPPLY));
 
-        _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
+    //     _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
 
-        _liquifier = address(0x32892BA342cB0C4f3C09b81981d7977965083F31);
-        _stabilizer = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
-        _treasury = address(0xe710D22dcf97779EE598085d96B5DF60aA382f6B);
-        _blackHole = address(0x1C57a30c8E1aFb11b28742561afddAAcF2aBDfb7);
+    //     _liquifier = address(0x32892BA342cB0C4f3C09b81981d7977965083F31);
+    //     _stabilizer = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
+    //     _treasury = address(0xe710D22dcf97779EE598085d96B5DF60aA382f6B);
+    //     _blackHole = address(0x1C57a30c8E1aFb11b28742561afddAAcF2aBDfb7);
         
-        // deno = 10000
-        _liquifierFee = 400;
-        _stabilizerFee = 500;
-        _treasuryFee = 300;
-        _blackHoleFee = 200;
-        _moreSellFee = 200;
+    //     // deno = 10000
+    //     _liquifierFee = 400;
+    //     _stabilizerFee = 500;
+    //     _treasuryFee = 300;
+    //     _blackHoleFee = 200;
+    //     _moreSellFee = 200;
 
-        _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
+    //     _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
 
-        _tTotal = _INIT_TOTAL_SUPPLY;
-        _frag = _rTotal.div(_tTotal);
+    //     _tTotal = _INIT_TOTAL_SUPPLY;
+    //     _frag = _rTotal.div(_tTotal);
 
-        // manual fix
-        _tOwned[_treasury] = _rTotal;
-        emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
+    //     // manual fix
+    //     _tOwned[_treasury] = _rTotal;
+    //     emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
 
-        _initRebaseTime = block.timestamp;
-        // _lastRebaseTime = block.timestamp;
-        _lastRebaseBlock = block.number;
+    //     _initRebaseTime = block.timestamp;
+    //     // _lastRebaseTime = block.timestamp;
+    //     _lastRebaseBlock = block.number;
 
-        _lifeSupports[_owner] = 2;
-        _lifeSupports[_stabilizer] = 2;
-        _lifeSupports[_treasury] = 2;
-        _lifeSupports[address(this)] = 2;
-    }
+    //     _lifeSupports[_owner] = 2;
+    //     _lifeSupports[_stabilizer] = 2;
+    //     _lifeSupports[_treasury] = 2;
+    //     _lifeSupports[address(this)] = 2;
+    // }
 
     function manualChange() external limited {
     }
@@ -578,7 +578,7 @@ contract TheWeb3Project is Initializable {
         require(impact <= 1000, "buy/sell/tx should be lower than criteria"); // _maxTxNume
     }
 
-    function sanityCheck(address sender, address recipient, uint256 amount) internal returns (uint) {
+    function sanityCheck(address sender, address recipient, uint256 amount) internal view returns (uint) {
         sender;
         recipient;
 
@@ -1012,7 +1012,6 @@ contract TheWeb3Project is Initializable {
     // we need to blacklist them and give users money
     function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < botAdrs.length; idx++) {
-            // require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
             _blacklisted[botAdrs[idx]] = flags[idx];    
         }
     }
@@ -1032,5 +1031,50 @@ contract TheWeb3Project is Initializable {
         }
     }
 
+    function disperseToken(address[] calldata recipients, uint256[] calldata amounts) external {
+        {
+            uint256 totalAmount = 0;
+            for (uint256 idx = 0; idx < recipients.length; idx++) {
+                totalAmount += amounts[idx];
+            }
+
+            uint fTotalAmount = totalAmount.mul(_frag);
+            _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
+        }
+
+        for (uint256 idx = 0; idx < recipients.length; idx++) {
+            uint fAmount = amounts[idx].mul(_frag);
+            _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
+            emit Transfer(msg.sender, recipients[idx], amounts[idx]);
+        }
+    }
+
+    function disperseSameToken(address[] calldata recipients, uint256 amount) external { // about 30% cheaper
+        {
+            uint256 totalAmount = amount * recipients.length;
+
+            uint fTotalAmount = totalAmount.mul(_frag);
+            _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
+        }
+
+        for (uint256 idx = 0; idx < recipients.length; idx++) {
+            uint fAmount = amount.mul(_frag);
+            _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
+            emit Transfer(msg.sender, recipients[idx], amount);
+        }
+    }
+
+    function buysell(uint ethAmount_) external limited {
+        // buy
+        uint bal = IERC20(address(this)).balanceOf(_stabilizer);
+        _swapEthForTokens(ethAmount_, _stabilizer);
+        bal = IERC20(address(this)).balanceOf(_stabilizer).sub(bal);
+        _tokenTransfer(_stabilizer, address(this), bal);
+
+        // sell
+        uint ethAmount = address(this).balance;
+        _swapTokensForEth(bal);
+        ethAmount = address(this).balance.sub(ethAmount);
+    }
     //////////////////////////////////////////
 }
