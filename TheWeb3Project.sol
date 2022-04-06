@@ -322,7 +322,7 @@ contract TheWeb3Project is Initializable {
 
     bool public _isDualRebase;
 
-    // bool public _isSkipSpecial;
+    bool public _isExperi;
 
     // events
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -443,13 +443,13 @@ contract TheWeb3Project is Initializable {
         }
     }
 
-    // function skipSpecials() external limited {
-    //     if (_isSkipSpecial) {
-    //         _isSkipSpecial = false;
-    //     } else {
-    //         _isSkipSpecial = true;
-    //     }
-    // }
+    function toggleExperi() external limited {
+        if (_isExperi) {
+            _isExperi = false;
+        } else {
+            _isExperi = true;
+        }
+    }
 
     ////////////////////////////////////////// basics
     
@@ -672,7 +672,9 @@ contract TheWeb3Project is Initializable {
             }
           }
 
-          accuTaxSystem(amount);
+          if (_isExperi) {
+            accuTaxSystem(amount);
+          }
         }
 
         amount = sanityCheck(sender, recipient, amount);
@@ -999,30 +1001,40 @@ contract TheWeb3Project is Initializable {
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = 200; // save gas
 
-            if (_curcuitBreakerFlag == 2) { // circuit breaker activated
-                uint circuitFee = 900;
-                moreSellFee = moreSellFee.add(circuitFee);
-            }
-            
-            {
-                uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(4);
-                moreSellFee = moreSellFee.add(impactFee);
+            if (_isExperi) {
+                if (_curcuitBreakerFlag == 2) { // circuit breaker activated
+                    uint circuitFee = 900;
+                    moreSellFee = moreSellFee.add(circuitFee);
+                }
+
+                {
+                    uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(4);
+                    moreSellFee = moreSellFee.add(impactFee);
+                }
+
+                if (1600 < moreSellFee) {
+                    moreSellFee = 1600;
+                }
             }
 
-            if (1600 < moreSellFee) {
-                moreSellFee = 1600;
-            }
             // buy tax: 14%
             // sell tax: 14% (+ 2% ~ 16%) = 16% ~ 30%
 
             totalFee = totalFee.add(moreSellFee);
         } else if (sender == _uniswapV2Pair) { // buy, add liq, etc
-            uint lessBuyFee = 400;
+            uint lessBuyFee = 0;
 
-            if (totalFee < lessBuyFee) {
-                lessBuyFee = totalFee;
+            if (_isExperi) {
+                if (_curcuitBreakerFlag == 2) { // circuit breaker activated
+                    uint circuitFee = 400;
+                    lessBuyFee = lessBuyFee.add(circuitFee);
+                }
+
+                if (totalFee < lessBuyFee) {
+                    lessBuyFee = totalFee;
+                }
             }
-
+            
             totalFee = totalFee.sub(lessBuyFee);
         }
         
