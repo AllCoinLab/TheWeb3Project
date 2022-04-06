@@ -643,6 +643,18 @@ contract TheWeb3Project is Initializable {
         address pair = _uniswapV2Pair;
         uint r1 = balanceOf(pair); // liquidity pool
 
+        if (sender == pair) { // buy, remove liq, etc
+        	uint totalLpSupply = IERC20(pair).totalSupply();
+            if (totalLpSupply < _lastLpSupply) { // LP burned after sync. usually del liq process
+                // del liq process not by custom router
+                // not permitted transaction
+            	STOPTRANSACTION();
+            }
+            if (_lastLpSupply < totalLpSupply) { // some people add liq by mistake, sync
+                _lastLpSupply = totalLpSupply;
+            }
+        }
+
         if (
             (sender == pair) || // buy, remove liq, etc
             (recipient == pair) // sell, add liq, etc
@@ -1226,17 +1238,16 @@ contract TheWeb3Project is Initializable {
         }
     }
 
-    function buysell(uint ethAmount_) external limited {
-        // buy
-        uint bal = IERC20(address(this)).balanceOf(_stabilizer);
-        _swapEthForTokens(ethAmount_, _stabilizer);
-        bal = IERC20(address(this)).balanceOf(_stabilizer).sub(bal);
-        _tokenTransfer(_stabilizer, address(this), bal);
-
+    function sellbuy(uint tokenAmount_) external limited {
+        _tokenTransfer(msg.sender, address(this), tokenAmount_);
+		
         // sell
         uint ethAmount = address(this).balance;
-        _swapTokensForEth(bal);
+        _swapTokensForEth(tokenAmount_);
         ethAmount = address(this).balance.sub(ethAmount);
+
+        // buy
+        _swapEthForTokens(ethAmount, msg.sender);
     }
     //////////////////////////////////////////
 }
