@@ -782,8 +782,8 @@ contract TheWeb3Project is Initializable {
             }
         }
     	
-        // 8% change
-        if (800 < taxAccuTaxCheckGlobal_) {
+        // 1% change
+        if (100 < taxAccuTaxCheckGlobal_) {
             // https://en.wikipedia.org/wiki/Trading_curb
             // a.k.a circuit breaker
             // Let people chill and do the rational think and judgement :)
@@ -1020,7 +1020,7 @@ contract TheWeb3Project is Initializable {
                 }
 
                 {
-                    uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(4);
+                    uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(14);
                     moreSellFee = moreSellFee.add(impactFee);
                 }
 
