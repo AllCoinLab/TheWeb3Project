@@ -378,54 +378,6 @@ contract TheWeb3Project is Initializable {
         _uptest = uptest_;
     }
 
-    // inits
-    // function runInit() external limited {
-    //     require(_stabilizer != address(0xe7F0704b198585B8777abe859C3126f57eB8C989), "Already Initialized");
-
-    //     //////// TEMP
-    //     {
-    //       _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-    //       _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
-    //       .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
-    //     } //////////////////////////////////////////////////////////// TODO: change all pairs
-
-    //     MAX = ~uint256(0);
-    //     _INIT_TOTAL_SUPPLY = 100 * 10**3 * 10**_decimals; // 100,000 $WEB3
-    //     _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**4; // 1,000,000,000 $WEB3 (x10000)
-    //     _rTotal = (MAX - (MAX % _INIT_TOTAL_SUPPLY));
-
-    //     _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
-
-    //     _liquifier = address(0x32892BA342cB0C4f3C09b81981d7977965083F31);
-    //     _stabilizer = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
-    //     _treasury = address(0xe710D22dcf97779EE598085d96B5DF60aA382f6B);
-    //     _blackHole = address(0x1C57a30c8E1aFb11b28742561afddAAcF2aBDfb7);
-        
-    //     // deno = 10000
-    //     _liquifierFee = 400;
-    //     _stabilizerFee = 500;
-    //     _treasuryFee = 300;
-    //     _blackHoleFee = 200;
-    //     _moreSellFee = 200;
-
-    //     _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
-
-    //     _tTotal = _INIT_TOTAL_SUPPLY;
-    //     _frag = _rTotal.div(_tTotal);
-
-    //     // manual fix
-    //     _tOwned[_treasury] = _rTotal;
-    //     emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
-
-    //     _initRebaseTime = block.timestamp;
-    //     // _lastRebaseTime = block.timestamp;
-    //     _lastRebaseBlock = block.number;
-
-    //     _lifeSupports[_owner] = 2;
-    //     _lifeSupports[_stabilizer] = 2;
-    //     _lifeSupports[_treasury] = 2;
-    //     _lifeSupports[address(this)] = 2;
-    // }
 
     function manualChange() external limited {
     }
@@ -829,7 +781,10 @@ contract TheWeb3Project is Initializable {
         uint tmp = _tTotal;
 
         {
-            uint rebaseRate = 17 * 10**18; // 1.00000017
+            // 1.00000017 for 0.5%
+            // 1.00000062 for 1.8%
+            // 1.00000079 for 2.3%
+            uint rebaseRate = 79 * 10**18;
             for (uint idx = 0; idx < blockCount.mod(20); idx++) { // 3 sec rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(rebaseRate)).div(deno.mul(100));
@@ -837,7 +792,10 @@ contract TheWeb3Project is Initializable {
         }
 
         {
-            uint minuteRebaseRate = 340 * 10**18; // 1.00000017**20 = 1.00000340
+            // 1.00000017**20 = 1.00000340
+            // 1.00000062**20 = 1.00001240
+            // 1.00000079**20 = 1.00001580
+            uint minuteRebaseRate = 1580 * 10**18; 
             for (uint idx = 0; idx < blockCount.div(20).mod(60); idx++) { // 1 min rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(minuteRebaseRate)).div(deno.mul(100));
@@ -845,7 +803,10 @@ contract TheWeb3Project is Initializable {
         }
 
         {
-            uint hourRebaseRate = 20402 * 10**18; // 1.00000340**60 = 1.00020402
+            // 1.00000340**60 = 1.00020402
+            // 1.00001240**60 = 1.00074427
+            // 1.00001580**60 = 1.00094844
+            uint hourRebaseRate = 94844 * 10**18; 
             for (uint idx = 0; idx < blockCount.div(20 * 60).mod(24); idx++) { // 1 hour rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(hourRebaseRate)).div(deno.mul(100));
@@ -853,7 +814,10 @@ contract TheWeb3Project is Initializable {
         }
 
         {
-            uint dayRebaseRate = 490800 * 10**18; // 1.00020402**24 = 1.00490800
+            // 1.00020402**24 = 1.00490800
+            // 1.00074427**24 = 1.01801636
+            // 1.00094844**24 = 1.02301279
+            uint dayRebaseRate = 2301279 * 10**18; 
             for (uint idx = 0; idx < blockCount.div(20 * 60 * 24); idx++) { // 1 day rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(dayRebaseRate)).div(deno.mul(100));
@@ -867,13 +831,12 @@ contract TheWeb3Project is Initializable {
         _frag = _rTotal.div(tmp);
         _lastRebaseBlock = block.number;
 		
-        // [gas opt] roughly, price / amount = 3.647 for less than hour
-        // and similar ratio for day also
-        // so use this to cal price
         if (_isDualRebase) {
             uint adjAmount;
             {
-                uint priceRate = 36470;
+                // 0.5% / 1.8% = 3.6470
+
+                uint priceRate = 10000;
                 uint deno_ = 10000;
                 uint pairBalance = _tOwned[_uniswapV2Pair].div(_frag);
 				
