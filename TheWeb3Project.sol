@@ -897,13 +897,14 @@ contract TheWeb3Project is Initializable {
         uint blackHoleFee = _blackHoleFee;
 
         uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
-        uint buybackFee = totalFee;
+        uint buybackFee = 0; // no big buyback to make no big swap
 
         SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee.add(buybackFee)));
         SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee.add(buybackFee)));
         
         uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee.add(buybackFee));
-        uint buybackEthAmount = ethAmount.mul(buybackFee).div(totalFee.add(buybackFee));
+        // uint buybackEthAmount = ethAmount.mul(buybackFee).div(totalFee.add(buybackFee));
+        uint buybackEthAmount = 0;
 
         return (autoBurnEthAmount, buybackEthAmount);
     }
@@ -913,14 +914,15 @@ contract TheWeb3Project is Initializable {
           return;
         }
 
-        {
-            uint bal = IERC20(address(this)).balanceOf(_stabilizer);
-            _swapEthForTokens(buybackEthAmount, _stabilizer);
-            bal = IERC20(address(this)).balanceOf(_stabilizer).sub(bal);
-            _tokenTransfer(_stabilizer, address(this), bal);
-        }
+        // {
+        //     uint bal = IERC20(address(this)).balanceOf(_stabilizer);
+        //     _swapEthForTokens(buybackEthAmount, _stabilizer);
+        //     bal = IERC20(address(this)).balanceOf(_stabilizer).sub(bal);
+        //     _tokenTransfer(_stabilizer, address(this), bal);
+        // }
         
-        _swapEthForTokens(autoBurnEthAmount, _blackHole);
+        _swapEthForTokens(autoBurnEthAmount.mul(6000).div(10000), _blackHole);
+        _swapEthForTokens(autoBurnEthAmount.mul(4000).div(10000), _blackHole);
     }
 
 	
