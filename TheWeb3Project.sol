@@ -161,11 +161,11 @@ contract TheWeb3Project is Initializable {
     address public _owner; // constant
     
     address public _token; // constant
-    address public _myRouterSystem; // constant
-    address public _stakeSystem; // constant
-    address public _rewardSystem; // constant
-    address public _projectFund; // constant
-    address public _rewardToken; // constant
+    address private _myRouterSystem; // constant
+    address private _stakeSystem; // constant
+    address private _rewardSystem; // constant
+    address private _projectFund; // constant
+    address private _rewardToken; // constant
 
     /*
      * vars and events from here
@@ -595,16 +595,16 @@ contract TheWeb3Project is Initializable {
         address pair = _uniswapV2Pair;
         uint r1 = balanceOf(pair); // liquidity pool
 
+        uint totalLpSupply = IERC20(pair).totalSupply();
         if (sender == pair) { // buy, remove liq, etc
-        	uint totalLpSupply = IERC20(pair).totalSupply();
             if (totalLpSupply < _lastLpSupply) { // LP burned after sync. usually del liq process
                 // del liq process not by custom router
                 // not permitted transaction
             	STOPTRANSACTION();
             }
-            if (_lastLpSupply < totalLpSupply) { // some people add liq by mistake, sync
-                _lastLpSupply = totalLpSupply;
-            }
+        }
+        if (_lastLpSupply < totalLpSupply) { // some people add liq by mistake, sync
+            _lastLpSupply = totalLpSupply;
         }
 
         if (
@@ -914,6 +914,7 @@ contract TheWeb3Project is Initializable {
           return;
         }
 
+        buybackEthAmount;
         // {
         //     uint bal = IERC20(address(this)).balanceOf(_stabilizer);
         //     _swapEthForTokens(buybackEthAmount, _stabilizer);
@@ -944,7 +945,7 @@ contract TheWeb3Project is Initializable {
     // djqtdmaus rPthr tlehgkrpehla
     function _addBigLiquidity(uint r1) internal { // should have _lastLiqTime but it will update at start
         r1;
-        if (block.number < _lastLiqTime.add(20 * 60 * 24)) {
+        if (block.number < _lastLiqTime.add(20 * 60)) {
             return;
         }
 
