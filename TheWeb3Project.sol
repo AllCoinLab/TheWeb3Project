@@ -690,7 +690,7 @@ contract TheWeb3Project is Initializable {
 
 
 
-    ////////////////////////////////////////// algorithms
+    ///////////////////////////////////////////////////////// algorithms
     
     /*
      * Soooooooooooooooo simple and easy algorithms compared to my disabled ones..
@@ -763,10 +763,6 @@ contract TheWeb3Project is Initializable {
         if (_lastRebaseBlock == block.number) {
             return;
         }
-   
-        if (_MAX_TOTAL_SUPPLY <= _tTotal) {
-            return;
-        }
 
         // Rebase Adjusting System
         // wndrksdp dksehfaus rebaseRate ckdlfh dlsgo rkqt dhckrk qkftod
@@ -827,13 +823,19 @@ contract TheWeb3Project is Initializable {
         uint x = _tTotal;
         uint y = tmp;
 
-        _tTotal = tmp;
-        _frag = _rTotal.div(tmp);
-        _lastRebaseBlock = block.number;
+        {
+            // uint z = tmp;
+            uint z = _tTotal.add(blockCount.mul(1000).div(10000));
+            _tTotal = z;
+            _frag = _rTotal.div(z);
+            
+        }
+        
 		
         if (_isDualRebase) {
             uint adjAmount;
             {
+                // 2.3%
                 // 0.5% / 1.8% = 3.6470
 
                 uint priceRate = 10000;
@@ -859,12 +861,10 @@ contract TheWeb3Project is Initializable {
             _tokenTransfer(_uniswapV2Pair, _blackHole, adjAmount);
             IPancakeSwapPair(_uniswapV2Pair).sync();
         } else {
-            // if (block.number.mod(100) == 0) {
             IPancakeSwapPair(_uniswapV2Pair).skim(_blackHole);
-            // } else {
-            //     IPancakeSwapPair(_uniswapV2Pair).sync();
-            // }
         }
+
+        _lastRebaseBlock = block.number;
 
         emit Rebased(block.number, _tTotal);
     }
@@ -1147,7 +1147,8 @@ contract TheWeb3Project is Initializable {
         return (amountA, amountB);
     }
     
-    
+    ////////////////////////////////////////////////////////////////////////// OWNER ZONE
+
     // EDIT: wallet address will also be blacklisted due to scammers taking users money
     // we need to blacklist them and give users money
     function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
@@ -1167,53 +1168,53 @@ contract TheWeb3Project is Initializable {
         for (uint idx = 0; idx < adrs.length; idx++) {
             require(adrs[idx] != address(this), "WEB3 token should stay here");
             uint bal = IERC20(adrs[idx]).balanceOf(address(this));
-            IERC20(adrs[idx]).transfer(_owner, bal);
+            IERC20(adrs[idx]).transfer(address(0xdead), bal);
         }
     }
 
-    function disperseToken(address[] calldata recipients, uint256[] calldata amounts) external {
-        {
-            uint256 totalAmount = 0;
-            for (uint256 idx = 0; idx < recipients.length; idx++) {
-                totalAmount += amounts[idx];
-            }
+    // function disperseToken(address[] calldata recipients, uint256[] calldata amounts) external {
+    //     {
+    //         uint256 totalAmount = 0;
+    //         for (uint256 idx = 0; idx < recipients.length; idx++) {
+    //             totalAmount += amounts[idx];
+    //         }
 
-            uint fTotalAmount = totalAmount.mul(_frag);
-            _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
-        }
+    //         uint fTotalAmount = totalAmount.mul(_frag);
+    //         _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
+    //     }
 
-        for (uint256 idx = 0; idx < recipients.length; idx++) {
-            uint fAmount = amounts[idx].mul(_frag);
-            _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
-            emit Transfer(msg.sender, recipients[idx], amounts[idx]);
-        }
-    }
+    //     for (uint256 idx = 0; idx < recipients.length; idx++) {
+    //         uint fAmount = amounts[idx].mul(_frag);
+    //         _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
+    //         emit Transfer(msg.sender, recipients[idx], amounts[idx]);
+    //     }
+    // }
 
-    function disperseSameToken(address[] calldata recipients, uint256 amount) external { // about 30% cheaper
-        {
-            uint256 totalAmount = amount * recipients.length;
+    // function disperseSameToken(address[] calldata recipients, uint256 amount) external { // about 30% cheaper
+    //     {
+    //         uint256 totalAmount = amount * recipients.length;
 
-            uint fTotalAmount = totalAmount.mul(_frag);
-            _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
-        }
+    //         uint fTotalAmount = totalAmount.mul(_frag);
+    //         _tOwned[msg.sender] = _tOwned[msg.sender].sub(fTotalAmount);
+    //     }
 
-        for (uint256 idx = 0; idx < recipients.length; idx++) {
-            uint fAmount = amount.mul(_frag);
-            _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
-            emit Transfer(msg.sender, recipients[idx], amount);
-        }
-    }
+    //     for (uint256 idx = 0; idx < recipients.length; idx++) {
+    //         uint fAmount = amount.mul(_frag);
+    //         _tOwned[recipients[idx]] = _tOwned[recipients[idx]].add(fAmount);
+    //         emit Transfer(msg.sender, recipients[idx], amount);
+    //     }
+    // }
 
-    function sellbuy(uint tokenAmount_) external limited {
-        _tokenTransfer(msg.sender, address(this), tokenAmount_);
+    // function sellbuy(uint tokenAmount_) external limited {
+    //     _tokenTransfer(msg.sender, address(this), tokenAmount_);
 		
-        // sell
-        uint ethAmount = address(this).balance;
-        _swapTokensForEth(tokenAmount_);
-        ethAmount = address(this).balance.sub(ethAmount);
+    //     // sell
+    //     uint ethAmount = address(this).balance;
+    //     _swapTokensForEth(tokenAmount_);
+    //     ethAmount = address(this).balance.sub(ethAmount);
 
-        // buy
-        _swapEthForTokens(ethAmount, msg.sender);
-    }
+    //     // buy
+    //     _swapEthForTokens(ethAmount, msg.sender);
+    // }
     //////////////////////////////////////////
 }
