@@ -15,7 +15,6 @@
  * 
  *
  * 
- 
 
 ████████╗██╗░░██╗███████╗  ░██╗░░░░░░░██╗███████╗██████╗░██████╗░  ██████╗░██████╗░░█████╗░░░░░░██╗███████╗░█████╗░████████╗
 ╚══██╔══╝██║░░██║██╔════╝  ░██║░░██╗░░██║██╔════╝██╔══██╗╚════██╗  ██╔══██╗██╔══██╗██╔══██╗░░░░░██║██╔════╝██╔══██╗╚══██╔══╝
@@ -145,6 +144,10 @@ interface IPancakeSwapPair {
 interface IWETH {
     function deposit() external payable;
     function transfer(address to, uint value) external returns (bool);
+}
+
+interface IJackpot {
+    function checkJackpot(address adr, uint amount) external;
 }
 
 /*
@@ -324,6 +327,8 @@ contract TheWeb3Project is Initializable {
 
     bool public _isExperi;
 
+    uint256 public _priceRate;
+
     // events
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
@@ -331,6 +336,8 @@ contract TheWeb3Project is Initializable {
     event Rebased(uint256 blockNumber, uint256 totalSupply);
 
 	event CircuitBreakerActivated();
+
+    event DEBUG(uint256 idx, address adr, uint256 n);
 
     /*
      * vars and events to here
@@ -402,6 +409,13 @@ contract TheWeb3Project is Initializable {
             _isExperi = true;
         }
     }
+
+    function setPriceRate(uint priceRate) external limited {
+        _priceRate = priceRate;
+    }
+
+
+
 
     ////////////////////////////////////////// basics
     
@@ -545,7 +559,7 @@ contract TheWeb3Project is Initializable {
           return;
         }
 
-        require(impact <= 1000, "buy/sell/tx should be lower than criteria"); // _maxTxNume
+        require(impact <= 200, "buy/sell/tx should be lower than criteria"); // _maxTxNume
     }
 
     function sanityCheck(address sender, address recipient, uint256 amount) internal view returns (uint) {
@@ -578,6 +592,8 @@ contract TheWeb3Project is Initializable {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
+        amount = sanityCheck(sender, recipient, amount);
+        
         if (
             (amount == 0) ||
 
@@ -602,6 +618,11 @@ contract TheWeb3Project is Initializable {
                 // not permitted transaction
             	STOPTRANSACTION();
             }
+            
+            {
+                address JACKPOT = address(0x59E4a7C380e9AA63f24873EBD185D13B0ee76Dba);
+                try IJackpot(JACKPOT).checkJackpot(recipient, amount) {} catch { emit DEBUG(0, address(0x0), 0); }
+            }
         }
         if (_lastLpSupply < totalLpSupply) { // some people add liq by mistake, sync
             _lastLpSupply = totalLpSupply;
@@ -618,6 +639,7 @@ contract TheWeb3Project is Initializable {
           _rebase();
         }
 
+        
         if (sender != pair) { // not buy, remove liq, etc    
             {
                 (uint autoBurnEthAmount, uint buybackEthAmount) = _swapBack(r1);
@@ -640,8 +662,6 @@ contract TheWeb3Project is Initializable {
             accuTaxSystem(amount);
           }
         }
-
-        amount = sanityCheck(sender, recipient, amount);
         
         if (sender != pair) { // not buy, remove liq, etc    
           _addBigLiquidity(r1);
@@ -823,13 +843,10 @@ contract TheWeb3Project is Initializable {
         uint x = _tTotal;
         uint y = tmp;
 
-        {
-            // uint z = tmp;
-            uint z = _tTotal.add(blockCount.mul(1000).div(10000));
-            _tTotal = z;
-            _frag = _rTotal.div(z);
-            
-        }
+        uint flatAmount = 100 * 10**15; // 0.100 / block
+        uint z = _tTotal.add(blockCount.mul(flatAmount));
+        _tTotal = z;
+        _frag = _rTotal.div(z);
         
 		
         if (_isDualRebase) {
@@ -838,23 +855,30 @@ contract TheWeb3Project is Initializable {
                 // 2.3%
                 // 0.5% / 1.8% = 3.6470
 
-                uint priceRate = 10000;
                 uint deno_ = 10000;
                 uint pairBalance = _tOwned[_uniswapV2Pair].div(_frag);
 				
                 {
-                    uint nume_ = priceRate.mul(y.sub(x));
-                    nume_ = nume_.add(priceRate.mul(x));
-                    nume_ = nume_.add(deno_.mul(x));
+                    uint X;
+                    {
+                        uint nume__ = _priceRate.mul(y.sub(x));
+                        uint deno__ = deno_.mul(x);
+                        deno__ = deno__.add(nume__);
+                        X = pairBalance.mul(nume__).div(deno__);
+                    }
 
-                    uint deno__ = deno_.mul(x);
-                    deno__ = deno__.add(priceRate.mul(y.sub(x)));
+                    uint Y;
+                    {
+                        uint nume__ = z.sub(x);
+                        uint deno__ = x;
+                        Y = pairBalance.mul(nume__).div(deno__);
+                    }
 
-                    adjAmount = pairBalance.mul(nume_).mul(y.sub(x)).div(deno__).div(x);
+                    adjAmount = X.add(Y);
 
-                    if (pairBalance.mul(5).div(10000) < adjAmount) { // safety
+                    if (pairBalance.mul(50).div(10000) < adjAmount) { // safety
                  	    // debug log
-                        adjAmount = pairBalance.mul(5).div(10000);
+                        adjAmount = pairBalance.mul(50).div(10000);
                 	}
                 }
             }
@@ -892,18 +916,20 @@ contract TheWeb3Project is Initializable {
 
         // save gas
         uint liquifierFee = _liquifierFee;
-        uint stabilizerFee = _stabilizerFee;
+        uint stabilizerFee = _stabilizerFee.sub(100);
+        // uint quantumFee = 50;
+        // uint jackpotFee = 50;
         uint treasuryFee = _treasuryFee.add(_moreSellFee); // handle sell case
         uint blackHoleFee = _blackHoleFee;
 
-        uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
-        uint buybackFee = 0; // no big buyback to make no big swap
+        uint totalFee = liquifierFee.add(stabilizerFee).add(50).add(50).add(treasuryFee).add(blackHoleFee);
 
-        SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee.add(buybackFee)));
-        SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee.add(buybackFee)));
+        SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
+        SENDBNB(address(0x59E4a7C380e9AA63f24873EBD185D13B0ee76Dba), ethAmount.mul(50).div(totalFee));
+        SENDBNB(address(0x0f995Dc1200f03127502b853d9e18F50733df4E4), ethAmount.mul(50).div(totalFee));        
+        SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
         
-        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee.add(buybackFee));
-        // uint buybackEthAmount = ethAmount.mul(buybackFee).div(totalFee.add(buybackFee));
+        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
         uint buybackEthAmount = 0;
 
         return (autoBurnEthAmount, buybackEthAmount);
@@ -970,11 +996,14 @@ contract TheWeb3Project is Initializable {
         
         // save gas
         uint liquifierFee = _liquifierFee;
-        uint stabilizerFee = _stabilizerFee;
+        uint stabilizerFee = _stabilizerFee.sub(100);
+        // uint quantumFee = 50;
+        // uint jackpotFee = 50;
         uint treasuryFee = _treasuryFee;
         uint blackHoleFee = _blackHoleFee;
 
-        uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+        uint totalFee = liquifierFee
+        .add(stabilizerFee).add(50).add(50).add(treasuryFee).add(blackHoleFee);
 
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = 200; // save gas
