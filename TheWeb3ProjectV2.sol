@@ -40,7 +40,7 @@
  */
 
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.2;
+pragma solidity ^0.8.2;
 
 import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
 // import "./Initializable.sol";
