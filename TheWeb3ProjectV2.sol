@@ -197,13 +197,12 @@ contract TheWeb3Project is Initializable {
     address public _liquifier;
     address public _stabilizer;
     address public _treasury;
-    address public _blackHole;
 
     // fees
     uint256 public _liquifierFee;
     uint256 public _stabilizerFee;
     uint256 public _treasuryFee;
-    uint256 public _blackHoleFee;
+    uint256 public _burnFee;
     uint256 public _moreSellFee;
 
     // rebase algorithm
@@ -296,13 +295,12 @@ contract TheWeb3Project is Initializable {
         _liquifier = address(0x32892BA342cB0C4f3C09b81981d7977965083F31);
         _stabilizer = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
         _treasury = address(0xe710D22dcf97779EE598085d96B5DF60aA382f6B);
-        _blackHole = address(0x1C57a30c8E1aFb11b28742561afddAAcF2aBDfb7);
         
         // deno = 10000
         _liquifierFee = 400;
         _stabilizerFee = 500;
         _treasuryFee = 300;
-        _blackHoleFee = 200;
+        _burnFee = 200;
         _moreSellFee = 200;
 
         _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
@@ -708,15 +706,15 @@ contract TheWeb3Project is Initializable {
         uint liquifierFee = _liquifierFee;
         uint stabilizerFee = _stabilizerFee;
         uint treasuryFee = _treasuryFee.add(_moreSellFee); // handle sell case
-        uint blackHoleFee = _blackHoleFee;
+        uint burnFee = _burnFee;
 
         // liquidity half
-        uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+        uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(burnFee);
 
         SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
         SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
         
-        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
+        uint autoBurnEthAmount = ethAmount.mul(burnFee).div(totalFee);
 
         return autoBurnEthAmount;
     }
@@ -726,7 +724,7 @@ contract TheWeb3Project is Initializable {
           return;
         }
 
-        _swapEthForTokens(autoBurnEthAmount, _blackHole); // user?
+        _swapEthForTokens(autoBurnEthAmount, address(0xdead)); // user?
     }
 
     // djqtdmaus rPthr tlehgkrpehla
@@ -772,9 +770,9 @@ contract TheWeb3Project is Initializable {
         uint liquifierFee = _liquifierFee;
         uint stabilizerFee = _stabilizerFee;
         uint treasuryFee = _treasuryFee;
-        uint blackHoleFee = _blackHoleFee;
+        uint burnFee = _burnFee;
 
-        uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+        uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(burnFee);
 
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = _moreSellFee; // save gas
