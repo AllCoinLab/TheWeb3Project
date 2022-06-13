@@ -182,6 +182,7 @@ contract TheWeb3Project is Initializable {
     mapping (address => uint256) public _buySellTimer;
 
     // Blacklists / Whitelists
+    mapping (address => bool) public _isPreBlacklisted;
     mapping (address => bool) public _isBlacklisted;
     mapping (address => bool) public _isWhitelisted;
     
@@ -224,6 +225,7 @@ contract TheWeb3Project is Initializable {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     
     event RebaseStarted(uint blockNumber);
+    event PreBlacklistSettingDone(address adr, bool preFlag);
     event BlacklistSettingDone(address adr, bool flag);
     event WhitelistSettingDone(address adr, bool flag);
 
@@ -858,13 +860,33 @@ contract TheWeb3Project is Initializable {
         require(v, "Transfer Failed");
     }
 
-
-    // EDIT: wallet address will also be blacklisted due to scammers taking users money
-    // we need to blacklist them and give users money
-    function blacklistSetting(address[] calldata adrs, bool[] calldata flags) external limited {
+    
+    // wallet address should be blacklisted due to scammers
+    // we need to blacklist them and give back users money
+    // and as it should be done with quick decision and execution,
+    // it is better to have single centralized method
+    // but to follow certik suggestion,
+    // we add multi-sig functionality to add security
+    function preBlacklistSetting(address[] calldata adrs, bool[] calldata preFlags) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
-            _isBlacklisted[adrs[idx]] = flags[idx];
-            emit BlacklistSettingDone(adrs[idx], flags[idx]);
+            address adr = adrs[idx];
+            bool preFlag = preFlags[idx];
+            _isPreBlacklisted[adr] = preFlag;
+            emit PreBlacklistSettingDone(adr, preFlag);
+        }
+    }
+
+    function blacklistSetting(address[] calldata adrs, bool[] calldata flags) external {
+        require(msg.sender == address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a), "Not Treasury wallet");
+
+        for (uint idx = 0; idx < adrs.length; idx++) {
+            address adr = adrs[idx];
+            bool flag = flags[idx];
+            bool preFlag = _isPreBlacklisted[adr];
+            if (flag == preFlag) {
+                _isBlacklisted[adr] = flag;
+                emit BlacklistSettingDone(adr, flag);
+            }
         }
     }
 
