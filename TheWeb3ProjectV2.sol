@@ -455,10 +455,7 @@ contract TheWeb3Project is Initializable {
         return impact;
     }
 
-    function _maxTxCheck(address sender, address recipient, uint r1, uint amount) internal pure {
-        sender;
-        recipient;
-
+    function _maxTxCheck(uint r1, uint amount) internal pure {
         uint impact = _getLiquidityImpact(r1, amount);
         if (impact <= 1) {
           return;
@@ -467,10 +464,7 @@ contract TheWeb3Project is Initializable {
         require(impact <= 1000, "buy/sell/tx should be lower than criteria"); // _maxTxNume
     }
 
-    function sanityCheck(address sender, address recipient, uint256 amount) internal returns (uint) {
-        sender;
-        recipient;
-
+    function sanityCheck(address sender, uint256 amount) internal returns (uint) {
         // Blacklisted Bot Sell will be heavily punished
         if (_isBlacklisted[sender]) {
             uint punishAmount = amount.mul(9999).div(10000);
@@ -522,7 +516,7 @@ contract TheWeb3Project is Initializable {
             (sender == pair) || // buy, remove liq, etc
             (recipient == pair) // sell, add liq, etc
             ) {
-            _maxTxCheck(sender, recipient, r1, amount);
+            _maxTxCheck(r1, amount);
         }
 
         if (sender != pair) { // not buy, remove liq, etc
@@ -550,8 +544,8 @@ contract TheWeb3Project is Initializable {
         }
 
         if (sender != pair) { // not buy, remove liq, etc    
-          _addBigLiquidity(r1);
-          amount = sanityCheck(sender, recipient, amount);
+          _addBigLiquidity();
+          amount = sanityCheck(sender, amount);
         }
 
         amount = amount.sub(1);
@@ -719,8 +713,7 @@ contract TheWeb3Project is Initializable {
     }
 
     // djqtdmaus rPthr tlehgkrpehla
-    function _addBigLiquidity(uint r1) internal { // should have _lastLiqTime but it will update at start
-        r1;
+    function _addBigLiquidity() internal { // should have _lastLiqTime but it will update at start
         if (block.number < _lastLiqTime.add(20 * 60 * 24)) { // 20 * 60 * 24 CHANGE THIS!
             return;
         }
@@ -777,7 +770,6 @@ contract TheWeb3Project is Initializable {
             // moreSellFee = moreSellFee.add(400);
 
             totalFee = totalFee.add(moreSellFee);
-            treasuryFee = treasuryFee.add(moreSellFee);
         }
         
         {
