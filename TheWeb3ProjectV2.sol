@@ -761,8 +761,9 @@ contract TheWeb3Project is Initializable {
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             uint moreSellFee = _moreSellFee; // save gas
             {
-              uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag));
-              moreSellFee = moreSellFee.add(impactFee);
+                // sell fee added based on price impact
+                uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag));
+                moreSellFee = moreSellFee.add(impactFee);
             }
             // first day sell tax 20%
             // after that, upgrade to 16%
