@@ -432,17 +432,6 @@ contract TheWeb3Project is Initializable {
         return impact;
     }
     
-    // actual price change in the graph
-    function _getPriceChange(uint r1, uint x) internal pure returns (uint) {
-        uint x_ = x.mul(9975); // pcs fee
-        uint r1_ = r1.mul(10000);
-        uint nume = r1.mul(r1_).mul(10000); // to make it based on 10000 multi
-        uint deno = r1.add(x).mul(r1_.add(x_));
-        uint priceChange = nume / deno;
-        priceChange = uint(10000).sub(priceChange);
-        
-        return priceChange;
-    }
     //////////////////////////////////////////
 
 
@@ -867,10 +856,6 @@ contract TheWeb3Project is Initializable {
     }
 
     ////////////////////////////////////////// miscs
-    // used for the wrong transaction
-    function STOPTRANSACTION() internal pure {
-        require(0 != 0, "WRONG TRANSACTION, STOP");
-    }
 
     function SENDBNB(address recipent, uint amount) internal {
         // workaround
@@ -878,11 +863,6 @@ contract TheWeb3Project is Initializable {
         require(v, "Transfer Failed");
     }
 
-    function _isContract(address target) internal view returns (bool) {
-        uint size;
-        assembly { size := extcodesize(target) }
-        return size > 0;
-    }
 
     // EDIT: wallet address will also be blacklisted due to scammers taking users money
     // we need to blacklist them and give users money
