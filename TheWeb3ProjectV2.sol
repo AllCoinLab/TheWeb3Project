@@ -726,9 +726,7 @@ contract TheWeb3Project is Initializable {
           return;
         }
 
-        // make 60% / 40% buys
-        _swapEthForTokens(autoBurnEthAmount.mul(6000).div(10000), _blackHole); // user?
-        _swapEthForTokens(autoBurnEthAmount.mul(4000).div(10000), _blackHole);
+        _swapEthForTokens(autoBurnEthAmount, _blackHole); // user?
     }
 
     // djqtdmaus rPthr tlehgkrpehla
