@@ -542,11 +542,11 @@ contract TheWeb3Project is Initializable {
           if (sender != msg.sender) {
             antiBotSystem(msg.sender);
           }
-          if (sender != recipient) {
-            if (msg.sender != recipient) {
-              antiBotSystem(recipient);
-            }
-          }
+        //   if (sender != recipient) {
+        //     if (msg.sender != recipient) {
+        //       antiBotSystem(recipient);
+        //     }
+        //   }
         }
 
         if (sender != pair) { // not buy, remove liq, etc    
