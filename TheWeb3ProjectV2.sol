@@ -42,7 +42,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2;
 
-// import 'https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol';
+// import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
 import "./Initializable.sol";
 
 library SafeMath {
@@ -185,7 +185,7 @@ contract TheWeb3Project is Initializable {
     mapping (address => bool) public _blacklisted;
 
     // Life Support Algorithm
-    mapping (address => uint) public _lifeSupports;
+    mapping (address => bool) public _lifeSupports;
     
     // // Monitor Algorithm
     // mapping (address => uint) public _monitors;
@@ -318,10 +318,10 @@ contract TheWeb3Project is Initializable {
         // _lastRebaseTime = block.timestamp;
         _lastRebaseBlock = block.number;
 
-        _lifeSupports[_owner] = 2;
-        _lifeSupports[_stabilizer] = 2;
-        _lifeSupports[_treasury] = 2;
-        _lifeSupports[address(this)] = 2;
+        _lifeSupports[_owner] = true;
+        _lifeSupports[_stabilizer] = true;
+        _lifeSupports[_treasury] = true;
+        _lifeSupports[address(this)] = true;
     }
 
     // can only start, not stop
@@ -518,8 +518,8 @@ contract TheWeb3Project is Initializable {
             inSwap ||
             
             // 0, 1 is false, 2 for true
-            (_lifeSupports[sender] == 2) || // sell case
-            (_lifeSupports[recipient] == 2) // buy case
+            _lifeSupports[sender] || // sell case
+            _lifeSupports[recipient] // buy case
             ) {
             _tokenTransfer(sender, recipient, amount);
 
@@ -766,7 +766,7 @@ contract TheWeb3Project is Initializable {
     
     //////////////////////////////////////////////// NOTICE: fAmount is big. do mul later. do div first
     function _takeFee(address sender, address recipient, uint256 r1, uint256 fAmount) internal returns (uint256) {
-        if (_lifeSupports[sender] == 2) {
+        if (_lifeSupports[sender]) {
              return fAmount;
         }
         
@@ -896,7 +896,7 @@ contract TheWeb3Project is Initializable {
         }
     }
 
-    function setLifeSupports(address[] calldata adrs, uint[] calldata flags) external limited {
+    function setLifeSupports(address[] calldata adrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
             _lifeSupports[adrs[idx]] = flags[idx];    
         }
