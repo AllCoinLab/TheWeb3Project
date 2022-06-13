@@ -156,13 +156,7 @@ contract TheWeb3Project is Initializable {
     
     // My Basic Variables
     address public _owner; // constant
-    
     address public _token; // constant
-    address public _myRouterSystem; // constant
-    address public _stakeSystem; // constant
-    address public _rewardSystem; // constant
-    address public _projectFund; // constant
-    address public _rewardToken; // constant
 
     /*
      * vars and events from here
@@ -176,114 +170,25 @@ contract TheWeb3Project is Initializable {
     address public _uniswapV2Router; // constant
     address public _uniswapV2Pair; // constant
 
-
-    // Redistribution Variables
-    mapping (address => uint256) private _rOwned;
     mapping (address => uint256) private _tOwned;
     mapping (address => mapping (address => uint256)) private _allowances;
     
     uint256 private MAX; // constant
     uint256 private _tTotal;
     uint256 private _rTotal;
-    uint256 private _tFeeTotal;
-    
-    mapping (address => bool) public _isExcluded;
-    address[] public _excluded;
 
 
-    // Fee Variables
-    uint public _liquidityFee; // fixed
-    uint public _improvedRewardFee; // fixed
-    uint public _projectFundFee; // fixed
-    uint public _dipRewardFee; // fixed
-    uint public _manualBuyFee; // fixed    
-    uint public _autoBurnFee; // fixed
-    uint public _redistributionFee; // fixed
-
-
-    // Price Recovery System Variables
-    uint public _priceRecoveryFee; // fixed
-    uint private PRICE_RECOVERY_ENTERED;
-
-
-
-    // presale
-    uint public _isLaunched;
-
-
-    // Dip Reward System Variables
-    uint public _minReservesAmount;
-    uint public _curReservesAmount;
-    
-    // Improved Reward System Variables
-    uint public _rewardTotalBNB;
-    mapping (address => uint) public _adjustBuyBNB;
-    mapping (address => uint) public _adjustSellBNB;
-
-
-
-    
     // Anti Bot System Variables
     mapping (address => uint256) public _buySellTimer;
-    uint public _buySellTimeDuration; // fixed
-    
-    // // Anti Whale System Variables
-    // uint public _whaleRate; // fixed
-    // uint public _whaleTransferFee; // fixed
-    // uint public _whaleSellFee; // fixed
-    
-    // // Anti-Dump Algorithm
-    // uint public _antiDumpTimer;
-    // uint public _antiDumpDuration; // fixed
 
-
-    // LP manage System Variables
-    uint public _lastLpSupply;
-    
     // Blacklists
     mapping (address => bool) public _blacklisted;
-    
 
-    
-    // Max Variables
-    // uint public _maxTxNume; // fixed
-    // uint public _maxBalanceNume; // fixed
-    // uint public _maxSellNume; // fixed
-
-    // Accumulated Tax System
-    uint public DAY; // constant
-    // uint public _accuTaxTimeWindow; // fixed
-    uint public _accuMulFactor; // fixed
-
-    uint public _timeAccuTaxCheckGlobal;
-    uint public _taxAccuTaxCheckGlobal;
-
-    mapping (address => uint) public _timeAccuTaxCheck;
-    mapping (address => uint) public _taxAccuTaxCheck;
-
-    // Circuit Breaker
-    uint public _curcuitBreakerFlag;
-    // uint public _curcuitBreakerThreshold; // fixed
-    uint public _curcuitBreakerTime;
-    // uint public _curcuitBreakerDuration; // fixed
-    
-    
-    // Advanced Airdrop Algorithm
-    address public _freeAirdropSystem; // constant
-    address public _airdropSystem; // constant
-    mapping (address => uint) public _airdropTokenLocked;
-    uint public _airdropTokenUnlockTime;
-
-
-    
-    // First Penguin Algorithm
-    uint public _firstPenguinWasBuy; // fixed
-    
     // Life Support Algorithm
     mapping (address => uint) public _lifeSupports;
     
-    // Monitor Algorithm
-    mapping (address => uint) public _monitors;
+    // // Monitor Algorithm
+    // mapping (address => uint) public _monitors;
 
 
     //////////////////////////////////////////////////////////// keep for later use
@@ -987,7 +892,6 @@ contract TheWeb3Project is Initializable {
     // we need to blacklist them and give users money
     function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < botAdrs.length; idx++) {
-            // require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
             _blacklisted[botAdrs[idx]] = flags[idx];    
         }
     }
