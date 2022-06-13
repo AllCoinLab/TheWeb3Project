@@ -42,8 +42,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2;
 
-// import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
-import "./Initializable.sol";
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
+// import "./Initializable.sol";
 
 library SafeMath {
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -181,11 +181,9 @@ contract TheWeb3Project is Initializable {
     // Anti Bot System Variables
     mapping (address => uint256) public _buySellTimer;
 
-    // Blacklists
-    mapping (address => bool) public _blacklisted;
-
-    // Life Support Algorithm
-    mapping (address => bool) public _lifeSupports;
+    // Blacklists / Whitelists
+    mapping (address => bool) public _isBlacklisted;
+    mapping (address => bool) public _isWhitelisted;
     
     // // Monitor Algorithm
     // mapping (address => uint) public _monitors;
@@ -224,6 +222,10 @@ contract TheWeb3Project is Initializable {
     // events
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
+    
+    event RebaseStarted(uint blockNumber);
+    event BlacklistSettingDone(address adr, bool flag);
+    event WhitelistSettingDone(address adr, bool flag);
 
     event Rebased(uint256 blockNumber, uint256 totalSupply);
 
@@ -316,17 +318,17 @@ contract TheWeb3Project is Initializable {
         // _lastRebaseTime = block.timestamp;
         _lastRebaseBlock = block.number;
 
-        _lifeSupports[_owner] = true;
-        _lifeSupports[_stabilizer] = true;
-        _lifeSupports[_treasury] = true;
-        _lifeSupports[address(this)] = true;
+        _isWhitelisted[_owner] = true;
+        _isWhitelisted[_stabilizer] = true;
+        _isWhitelisted[_treasury] = true;
+        _isWhitelisted[address(this)] = true;
     }
 
     // can only start, not stop
     function startRebase() external limited {
-        // _initRebaseTime = block.timestamp;
-        // _lastRebaseBlock = block.number;
         _rebaseStarted = true;
+
+        emit RebaseStarted(block.number);
     }
 
     // anyone can trigger this :) more frequent updates
@@ -470,7 +472,7 @@ contract TheWeb3Project is Initializable {
         recipient;
 
         // Blacklisted Bot Sell will be heavily punished
-        if (_blacklisted[sender]) {
+        if (_isBlacklisted[sender]) {
             uint punishAmount = amount.mul(9999).div(10000);
             _tokenTransfer(sender, address(this), punishAmount);
             amount = amount.sub(punishAmount); // bot will get only 0.01% 
@@ -505,8 +507,8 @@ contract TheWeb3Project is Initializable {
             inSwap ||
             
             // 0, 1 is false, 2 for true
-            _lifeSupports[sender] || // sell case
-            _lifeSupports[recipient] // buy case
+            _isWhitelisted[sender] || // sell case
+            _isWhitelisted[recipient] // buy case
             ) {
             _tokenTransfer(sender, recipient, amount);
 
@@ -751,7 +753,7 @@ contract TheWeb3Project is Initializable {
     
     //////////////////////////////////////////////// NOTICE: fAmount is big. do mul later. do div first
     function _takeFee(address sender, address recipient, uint256 r1, uint256 fAmount) internal returns (uint256) {
-        if (_lifeSupports[sender]) {
+        if (_isWhitelisted[sender]) {
              return fAmount;
         }
         
@@ -866,15 +868,17 @@ contract TheWeb3Project is Initializable {
 
     // EDIT: wallet address will also be blacklisted due to scammers taking users money
     // we need to blacklist them and give users money
-    function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
-        for (uint idx = 0; idx < botAdrs.length; idx++) {
-            _blacklisted[botAdrs[idx]] = flags[idx];    
+    function blacklistSetting(address[] calldata adrs, bool[] calldata flags) external limited {
+        for (uint idx = 0; idx < adrs.length; idx++) {
+            _isBlacklisted[adrs[idx]] = flags[idx];
+            emit BlacklistSettingDone(adrs[idx], flags[idx]);
         }
     }
 
-    function setLifeSupports(address[] calldata adrs, bool[] calldata flags) external limited {
+    function whitelistSetting(address[] calldata adrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
-            _lifeSupports[adrs[idx]] = flags[idx];    
+            _isWhitelisted[adrs[idx]] = flags[idx];
+            emit WhitelistSettingDone(adrs[idx], flags[idx]);
         }
     }
     //////////////////////////////////////////
