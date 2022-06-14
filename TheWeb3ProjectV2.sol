@@ -42,8 +42,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
-// import "./Initializable.sol";
+// import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/master/contracts/proxy/utils/Initializable.sol";
+import "./Initializable.sol";
 
 library SafeMath {
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -148,7 +148,7 @@ interface IPancakeSwapPair {
  * interfaces to here
  */
  
-contract TheWeb3Project is Initializable {
+contract TheWeb3ProjectV2 is Initializable {
     using SafeMath for uint256;
     
     // Upgradable Contract Test
@@ -264,7 +264,7 @@ contract TheWeb3Project is Initializable {
 
         _name = "The Web3 Project";
         // _name = "TEST"; // CHANGE LIQ AND THINGS
-        _symbol = "WEB3";
+        _symbol = "TWEP";
         // _symbol = "TEST";
         _decimals = 18;
 
