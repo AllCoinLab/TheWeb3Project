@@ -280,7 +280,7 @@ contract TheWeb3ProjectV2 is Initializable {
 
     // inits
     function runInit() external limited {
-        require(_liquifier == address(0x4De7Bd1387A46F4D86fCDEB495AC265989C75136), "Already Initialized");
+        require(_liquifier != address(0x4De7Bd1387A46F4D86fCDEB495AC265989C75136), "Already Initialized");
 
         //////// TEMP
         {
