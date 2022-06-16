@@ -27,7 +27,7 @@
  *                                                                                                              \$$$$$$  |                              
  *                                                                                                               \______/                               
  * 
- * 
+ *      
  * This is UpGradable Contract
  * So many new features will be applied periodically :)
  * 
@@ -280,7 +280,7 @@ contract TheWeb3ProjectV2 is Initializable {
 
     // inits
     function runInit() external limited {
-        require(_stabilizer != address(0xe7F0704b198585B8777abe859C3126f57eB8C989), "Already Initialized");
+        require(_liquifier == address(0x4De7Bd1387A46F4D86fCDEB495AC265989C75136), "Already Initialized");
 
         //////// TEMP
         {
@@ -290,22 +290,22 @@ contract TheWeb3ProjectV2 is Initializable {
         } //////////////////////////////////////////////////////////// TODO: change all pairs
 
         MAX = ~uint256(0);
-        _INIT_TOTAL_SUPPLY = 100 * 10**3 * 10**_decimals; // 100,000 $WEB3
-        _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**4; // 1,000,000,000 $WEB3 (x10000)
+        _INIT_TOTAL_SUPPLY = 3 * 10**9 * 10**_decimals; // 3,000,000,000 $TWEP
+        _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**3; // 3,000,000,000,000 $TWEP (x1000)
         _rTotal = (MAX - (MAX % _INIT_TOTAL_SUPPLY));
 
         _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
 
-        _liquifier = address(0x32892BA342cB0C4f3C09b81981d7977965083F31);
-        _stabilizer = address(0xe7F0704b198585B8777abe859C3126f57eB8C989);
-        _treasury = address(0xe710D22dcf97779EE598085d96B5DF60aA382f6B);
+        _liquifier = address(0x4De7Bd1387A46F4D86fCDEB495AC265989C75136);
+        _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
+        _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
         
         // deno = 10000
         _liquifierFee = 400;
-        _stabilizerFee = 500;
-        _treasuryFee = 300;
-        _burnFee = 200;
-        _moreSellFee = 200;
+        _stabilizerFee = 100;
+        _treasuryFee = 400;
+        _burnFee = 100;
+        _moreSellFee = 0;
 
         _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
 
@@ -316,11 +316,10 @@ contract TheWeb3ProjectV2 is Initializable {
         _tOwned[_treasury] = _rTotal;
         emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
 
-        _initRebaseTime = block.timestamp;
-        // _lastRebaseTime = block.timestamp;
         _lastRebaseBlock = block.number;
 
         _isWhitelisted[_owner] = true;
+        _isWhitelisted[_liquifier] = true;
         _isWhitelisted[_stabilizer] = true;
         _isWhitelisted[_treasury] = true;
         _isWhitelisted[address(this)] = true;
@@ -329,6 +328,7 @@ contract TheWeb3ProjectV2 is Initializable {
     // can only start, not stop
     function startRebase() external limited {
         _rebaseStarted = true;
+        _lastRebaseBlock = block.number;
 
         emit RebaseStarted(block.number);
     }
@@ -678,9 +678,9 @@ contract TheWeb3ProjectV2 is Initializable {
           return 0;
         }
 
-        uint swapAmount = fAmount.div(_frag);
         // too big swap makes slippage over 49%
         // it is also not good for stability
+        uint swapAmount = fAmount.div(_frag);
         if (r1.mul(100).div(10000) < swapAmount) {
            swapAmount = r1.mul(100).div(10000);
         }
@@ -692,7 +692,7 @@ contract TheWeb3ProjectV2 is Initializable {
         // save gas
         uint liquifierFee = _liquifierFee;
         uint stabilizerFee = _stabilizerFee;
-        uint treasuryFee = _treasuryFee.add(_moreSellFee); // handle sell case
+        uint treasuryFee = _treasuryFee;
         uint burnFee = _burnFee;
 
         // liquidity half
@@ -716,7 +716,7 @@ contract TheWeb3ProjectV2 is Initializable {
 
     // djqtdmaus rPthr tlehgkrpehla
     function _addBigLiquidity() internal { // should have _lastLiqTime but it will update at start
-        if (block.number < _lastLiqTime.add(20 * 60 * 24)) { // 20 * 60 * 24 CHANGE THIS!
+        if (block.number < _lastLiqTime.add(20 * 60)) { // 20 * 60 * 24 * 7 CHANGE THIS!
             return;
         }
 
