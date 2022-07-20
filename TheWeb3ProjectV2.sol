@@ -802,7 +802,7 @@ contract TheWeb3ProjectV2 is Initializable {
         uint r1 = balanceOf(_uniswapV2Pair);
     	uint curcuitBreakerFlag_ = _curcuitBreakerFlag;
 		if (curcuitBreakerFlag_ == 2) { // circuit breaker activated
-			if (_curcuitBreakerTime + 3600 < block.timestamp) { // certain duration passed. everyone chilled now?
+			if (_curcuitBreakerTime + 600 < block.timestamp) { // certain duration passed. everyone chilled now?
                 curcuitBreakerFlag_ = _deactivateCircuitBreaker();
             }
         }
@@ -920,7 +920,7 @@ contract TheWeb3ProjectV2 is Initializable {
 
         uint x = _tTotal;
         uint y = tmp;
-        uint flatAmount = _amountRate * 10**15; // 0.100 / block
+        uint flatAmount = _amountRate * 10**15; // 57 / block, 19.97% apr
         uint z = _tTotal.add(blockCount.mul(flatAmount));
         _tTotal = z;
         _frag = _rTotal.div(z);
@@ -1000,9 +1000,10 @@ contract TheWeb3ProjectV2 is Initializable {
         // liquidity half
         uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
 
-        SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
-        SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
-        
+        // SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
+        // SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
+        SENDBNB(_stabilizer, ethAmount);
+
         uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
 
         return autoBurnEthAmount;
@@ -1058,15 +1059,16 @@ contract TheWeb3ProjectV2 is Initializable {
              return fAmount;
         }
         
-        // save gas
-        uint liquifierFee = _liquifierFee;
-        uint stabilizerFee = _stabilizerFee;
-        uint treasuryFee = _treasuryFee;
-        uint blackHoleFee = _blackHoleFee;
-
-        uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
 
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
+            // save gas
+            uint liquifierFee = _liquifierFee;
+            uint stabilizerFee = _stabilizerFee;
+            uint treasuryFee = _treasuryFee;
+            uint blackHoleFee = _blackHoleFee;
+
+            uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+            
             uint moreSellFee = 0; // save gas
             if (_isExperi) {
                 if (_curcuitBreakerFlag == 2) { // circuit breaker activated
@@ -1085,27 +1087,26 @@ contract TheWeb3ProjectV2 is Initializable {
             // sell tax: 10% (+ 0% ~ 20%) = 10% ~ 30%
 
             totalFee = totalFee.add(moreSellFee);
-            treasuryFee = treasuryFee.add(moreSellFee);
-        } else if (sender == _uniswapV2Pair) { // buy, add liq, etc
-            // buy tax: 0% 
-            uint lessBuyFee = 1000;
-            if (totalFee < lessBuyFee) {
-                lessBuyFee = totalFee;
+
+            {
+                uint fAmount_ = fAmount.div(10000).mul(totalFee.sub(stabilizerFee));
+                _tOwned[_blackHole] = _tOwned[_blackHole].add(fAmount_);
+                emit Transfer(sender, _blackHole, fAmount_.div(_frag));
             }
-            
-            totalFee = totalFee.sub(lessBuyFee);
-        }
-        
-        {
-            uint fAmount_ = fAmount.div(10000).mul(totalFee);
-            _tOwned[address(this)] = _tOwned[address(this)].add(fAmount_);
-            emit Transfer(sender, address(this), fAmount_.div(_frag));
+            {
+                uint fAmount_ = fAmount.div(10000).mul(stabilizerFee);
+                _tOwned[address(this)] = _tOwned[address(this)].add(fAmount_);
+                emit Transfer(sender, address(this), fAmount_.div(_frag));
+            }
+
+            {
+                uint feeAmount = fAmount.div(10000).mul(totalFee);
+                fAmount = fAmount.sub(feeAmount);
+            }
+
+        } else if (sender == _uniswapV2Pair) { // buy, add liq, etc
         }
 
-        {
-            uint feeAmount = fAmount.div(10000).mul(totalFee);
-            fAmount = fAmount.sub(feeAmount);
-        }
 
         return fAmount;
     }
