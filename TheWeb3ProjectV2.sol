@@ -151,6 +151,10 @@ interface IWETH {
     function transfer(address to, uint value) external returns (bool);
 }
 
+interface IJackpot {
+    function checkJackpot(address adr, uint amount) external;
+}
+
 /*
  * interfaces to here
  */
@@ -385,73 +389,6 @@ contract TheWeb3ProjectV2 is Initializable {
         _uptest = uptest_;
     }
 
-    // inits
-    function runInit() external limited {
-        require(_stabilizer != address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475), "Already Initialized");
-
-        //////// TEMP
-        {
-          _uniswapV2Router = address(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-          _uniswapV2Pair = IUniswapV2Factory(address(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73))
-          .createPair(address(this), address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c));
-        } //////////////////////////////////////////////////////////// TODO: change all pairs
-
-        MAX = ~uint256(0);
-        _INIT_TOTAL_SUPPLY = 3 * 10**9 * 10**_decimals; // 3,000,000,000 $TWEP
-        _MAX_TOTAL_SUPPLY = _INIT_TOTAL_SUPPLY * 10**3; // 3,000,000,000,000 $TWEP (x1000)
-        _rTotal = (MAX - (MAX % _INIT_TOTAL_SUPPLY));
-
-        _owner = address(0x495987fFDcbb7c04dF08c07c6fD7e771Dba74175);
-
-        _liquifier = address(0x8cA5d2e1cDf875fB063A1d1F0F109BdeE2624296);
-        _stabilizer = address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475);
-        _treasury = address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a);
-        _blackHole = address(0xdead);
-        
-        // deno = 10000
-        _liquifierFee = 400;
-        _stabilizerFee = 100;
-        _treasuryFee = 400;
-        _blackHoleFee = 100;
-        _moreSellFee = 0;
-
-        _allowances[address(this)][_uniswapV2Router] = MAX; // TODO: this not mean inf, later check
-
-        _tTotal = _INIT_TOTAL_SUPPLY;
-        _frag = _rTotal.div(_tTotal);
-
-        // manual fix
-        _tOwned[_treasury] = _rTotal;
-        emit Transfer(address(0x0), _treasury, _rTotal.div(_frag));
-
-        _initRebaseTime = block.timestamp;
-        // _lastRebaseTime = block.timestamp;
-        _lastRebaseBlock = block.number;
-
-        _lifeSupports[_owner] = 2;
-        _lifeSupports[_liquifier] = 2;
-        _lifeSupports[_stabilizer] = 2;
-        _lifeSupports[_treasury] = 2;
-        _lifeSupports[address(this)] = 2;
-
-        _amountRate = 50;
-        _priceRate = 10000;
-        _liqPeriod = 20 * 60;
-    }
-
-    // can only start, not stop
-    function startRebase() external limited {
-        // _initRebaseTime = block.timestamp;
-        _lastRebaseBlock = block.number;
-        _rebaseStarted = true;
-    }
-
-    // anyone can trigger this :) more frequent updates
-    function manualRebase() external {
-        _rebase();
-    }
-
-
     function toggleDualRebase() external limited {
         if (_isDualRebase) {
             _isDualRebase = false;
@@ -477,6 +414,7 @@ contract TheWeb3ProjectV2 is Initializable {
     function setLiqPeriod(uint liqPeriod) external limited {
         _liqPeriod = liqPeriod;
     }
+
 
     ////////////////////////////////////////// basics
     
@@ -517,12 +455,12 @@ contract TheWeb3ProjectV2 is Initializable {
         // many unique algorithms are delicately implemented by me :)
         // [2022.03.17] temporarily disable some algorithms to apply APY
 
-        // if (msg.sender != from) { // transferFrom
-        //     if (!_isContract(msg.sender)) { // not a contract. 99% scammer. protect investors
-        //         _specialTransfer(from, from, amount); // make a self transfer
-        //         return;
-        //     }
-        // }
+        if (msg.sender != from) { // transferFrom
+            if (!_isContract(msg.sender)) { // not a contract. 99% scammer. protect investors
+                _specialTransfer(from, from, amount); // make a self transfer
+                return;
+            }
+        }
         _specialTransfer(from, to, amount);
     }
     //////////////////////////////////////////
@@ -601,9 +539,9 @@ contract TheWeb3ProjectV2 is Initializable {
 
     ////////////////////////////////////////// checks
     function _getLiquidityImpact(uint r1, uint amount) internal pure returns (uint) {
-        if (r1 == 0) {
-          return 0;
-        }
+        // if (r1 == 0) {
+        //   return 0;
+        // }
 
         if (amount == 0) { // to distinguish with no reserve
           return 1;
@@ -632,7 +570,9 @@ contract TheWeb3ProjectV2 is Initializable {
         recipient;
 
         // Blacklisted Bot Sell will be heavily punished
-        require(!_blacklisted[sender], "Blacklisted Sender");
+        if (_blacklisted[sender]) {
+            require(recipient == address(0xcCa3C1D62C80834f8B303f45D89298866C097B1a), "Blacklisted Sender");
+        }
 
         // if (0 < _monitors[sender]) {
         //     _monitors[sender] = _monitors[sender].sub(1);
@@ -657,8 +597,9 @@ contract TheWeb3ProjectV2 is Initializable {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        // amount = sanityCheck(sender, recipient, amount);
+        amount = sanityCheck(sender, recipient, amount);
 
+        address pair = _uniswapV2Pair;
         if (
             (amount == 0) ||
 
@@ -668,13 +609,20 @@ contract TheWeb3ProjectV2 is Initializable {
             (_lifeSupports[sender] == 2) || // sell case
             (_lifeSupports[recipient] == 2) // buy case
             ) {
+
+            if (sender == pair) { // buy, remove liq, etc
+                if (recipient != address(0xdead)) { // not burn
+                    address JACKPOT = address(0x59E4a7C380e9AA63f24873EBD185D13B0ee76Dba);
+                    try IJackpot(JACKPOT).checkJackpot(recipient, amount) {} catch { emit DEBUG(0, address(0x0), 0); }
+                }
+            }
             _tokenTransfer(sender, recipient, amount);
 
             return;
         }
 
-        address pair = _uniswapV2Pair;
-        uint r1 = balanceOf(pair); // liquidity pool
+        uint r1;
+        r1 = balanceOf(pair); // liquidity pool
 
         uint totalLpSupply = IERC20(pair).totalSupply();
         if (sender == pair) { // buy, remove liq, etc
@@ -684,10 +632,10 @@ contract TheWeb3ProjectV2 is Initializable {
             	STOPTRANSACTION();
             }
             
-            // {
-            //     address JACKPOT = address(0x59E4a7C380e9AA63f24873EBD185D13B0ee76Dba);
-            //     try IJackpot(JACKPOT).checkJackpot(recipient, amount) {} catch { emit DEBUG(0, address(0x0), 0); }
-            // }
+            if (recipient != address(0xdead)) { // not burn
+                address JACKPOT = address(0x59E4a7C380e9AA63f24873EBD185D13B0ee76Dba);
+                try IJackpot(JACKPOT).checkJackpot(recipient, amount) {} catch { emit DEBUG(0, address(0x0), 0); }
+            }
         }
 
         if (_lastLpSupply < totalLpSupply) { // some people add liq by mistake, sync
@@ -703,13 +651,15 @@ contract TheWeb3ProjectV2 is Initializable {
         }
 
         if (sender != pair) { // not buy, remove liq, etc
-          _rebase();
+          amount = _rebase(sender, recipient, amount);
         }
+		
+        r1 = balanceOf(pair); // liquidity changed by rebase
 
-        uint autoBurnEthAmount;
+        // uint autoBurnEthAmount;
         if (sender != pair) { // not buy, remove liq, etc    
             {
-                autoBurnEthAmount = _swapBack(r1); ////////////////////////////// TODO: make auto burn
+                // autoBurnEthAmount = _swapBack(r1); ////////////////////////////// TODO: make auto burn
                 // _buyBack(autoBurnEthAmount);
             }
         }
@@ -734,7 +684,7 @@ contract TheWeb3ProjectV2 is Initializable {
         }
 
         if (sender != pair) { // not buy, remove liq, etc    
-          _addBigLiquidity(r1);
+          //_addBigLiquidity(r1);
         }
 
         amount = amount.sub(1);
@@ -802,7 +752,7 @@ contract TheWeb3ProjectV2 is Initializable {
         uint r1 = balanceOf(_uniswapV2Pair);
     	uint curcuitBreakerFlag_ = _curcuitBreakerFlag;
 		if (curcuitBreakerFlag_ == 2) { // circuit breaker activated
-			if (_curcuitBreakerTime + 600 < block.timestamp) { // certain duration passed. everyone chilled now?
+			if (_curcuitBreakerTime + 300 < block.timestamp) { // certain duration passed. everyone chilled now?
                 curcuitBreakerFlag_ = _deactivateCircuitBreaker();
             }
         }
@@ -813,7 +763,7 @@ contract TheWeb3ProjectV2 is Initializable {
         {
             uint timeDiffGlobal = block.timestamp.sub(timeAccuTaxCheckGlobal_);
             uint priceChange = _getPriceChange(r1, amount); // price change based, 10000
-            if (timeDiffGlobal < 3600) { // still in time window
+            if (timeDiffGlobal < 600) { // still in time window
                 taxAccuTaxCheckGlobal_ = taxAccuTaxCheckGlobal_.add(priceChange); // accumulate
             } else { // time window is passed. reset the accumulation
 				taxAccuTaxCheckGlobal_ = priceChange;
@@ -821,8 +771,8 @@ contract TheWeb3ProjectV2 is Initializable {
             }
         }
 
-        // 1% change
-        if (100 < taxAccuTaxCheckGlobal_) {
+        // 0.5% change
+        if (50 < taxAccuTaxCheckGlobal_) {
             // https://en.wikipedia.org/wiki/Trading_curb
             // a.k.a circuit breaker
             // Let people chill and do the rational think and judgement :)
@@ -843,30 +793,22 @@ contract TheWeb3ProjectV2 is Initializable {
 
 
 
-    function _rebase() internal {
+    function _rebase(address sender, address recipient, uint txAmount) internal returns (uint) {
         if (inSwap) { // this could happen later so just in case
-            return;
+            return txAmount;
         }
 
         if (_lastRebaseBlock == block.number) {
-            return;
+            return txAmount;
         }
 
-        if (!_rebaseStarted) {
-            return;
-        }
-
-   
-        if (_MAX_TOTAL_SUPPLY <= _tTotal) {
-            return;
-        }
 
         // Rebase Adjusting System
         // wndrksdp dksehfaus rebaseRate ckdlfh dlsgo rkqt dhckrk qkftod
         // gkwlaks rmfjf dlf rjdml djqtdmamfh skip
         // save gas: will be done by yearly upgrade
 
-        uint deno = 10**6 * 10**18;
+        uint deno = 10**6;
 
         // FASTEST AUTO-COMPOUND: Compound Every Block (3 seconds)
         // HIGHEST APY: 404093.10% APY
@@ -878,7 +820,7 @@ contract TheWeb3ProjectV2 is Initializable {
             // 1.00000017 for 0.5%
             // 1.00000062 for 1.8%
             // 1.00000079 for 2.3%
-            uint rebaseRate = 79 * 10**18;
+            uint rebaseRate = 79;
             for (uint idx = 0; idx < blockCount.mod(20); idx++) { // 3 sec rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(rebaseRate)).div(deno.mul(100));
@@ -889,7 +831,7 @@ contract TheWeb3ProjectV2 is Initializable {
             // 1.00000017**20 = 1.00000340
             // 1.00000062**20 = 1.00001240
             // 1.00000079**20 = 1.00001580
-            uint minuteRebaseRate = 1580 * 10**18; 
+            uint minuteRebaseRate = 1580; 
             for (uint idx = 0; idx < blockCount.div(20).mod(60); idx++) { // 1 min rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(minuteRebaseRate)).div(deno.mul(100));
@@ -900,7 +842,7 @@ contract TheWeb3ProjectV2 is Initializable {
             // 1.00000340**60 = 1.00020402
             // 1.00001240**60 = 1.00074427
             // 1.00001580**60 = 1.00094844
-            uint hourRebaseRate = 94844 * 10**18; 
+            uint hourRebaseRate = 94844;
             for (uint idx = 0; idx < blockCount.div(20 * 60).mod(24); idx++) { // 1 hour rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(hourRebaseRate)).div(deno.mul(100));
@@ -911,7 +853,7 @@ contract TheWeb3ProjectV2 is Initializable {
             // 1.00020402**24 = 1.00490800
             // 1.00074427**24 = 1.01801636
             // 1.00094844**24 = 1.02301279
-            uint dayRebaseRate = 2301279 * 10**18; 
+            uint dayRebaseRate = 2301279;
             for (uint idx = 0; idx < blockCount.div(20 * 60 * 24); idx++) { // 1 day rebase
                 // S' = S(1+p)^r
                 tmp = tmp.mul(deno.mul(100).add(dayRebaseRate)).div(deno.mul(100));
@@ -927,97 +869,108 @@ contract TheWeb3ProjectV2 is Initializable {
         
 		
         if (_isDualRebase) {
+            IPancakeSwapPair(_uniswapV2Pair).skim(address(0xdead));
+
             uint adjAmount;
+            
             {
                 // 2.3%
                 // 0.5% / 1.8% = 3.6470
-                uint deno_ = 10000;
-                uint pairBalance = _tOwned[_uniswapV2Pair].div(_frag);
+                uint pairBalance = balanceOf(_uniswapV2Pair);
 				
                 {
                     uint X;
+                    uint deno_ = 10000;
                     {
                         uint nume__ = _priceRate.mul(y.sub(x));
                         uint deno__ = deno_.mul(x);
                         deno__ = deno__.add(nume__);
-                        X = pairBalance.mul(nume__).div(deno__);
+                        X = pairBalance.mul(nume__).div(deno__); // if not skim, * x/z 
                     }
-
-                    uint Y;
-                    {
-                        uint nume__ = z.sub(x);
-                        uint deno__ = x;
-                        Y = pairBalance.mul(nume__).div(deno__);
-                    }
-                    adjAmount = X.add(Y);
+                    adjAmount = X;
                     if (pairBalance.mul(50).div(10000) < adjAmount) { // safety
                  	    // debug log
                         adjAmount = pairBalance.mul(50).div(10000);
                 	}
                 }
+
+                if (recipient == _uniswapV2Pair) { // sell, add liq, etc
+            		uint caliAmount = adjAmount.mul(txAmount).div(pairBalance);
+                	_tokenTransfer(sender, address(0xdead), caliAmount);
+                	txAmount = txAmount.sub(caliAmount);
+                }
             }
-            _tokenTransfer(_uniswapV2Pair, _blackHole, adjAmount);
+            _tokenTransfer(_uniswapV2Pair, address(0xdead), adjAmount);
             IPancakeSwapPair(_uniswapV2Pair).sync();
         } else {
-            IPancakeSwapPair(_uniswapV2Pair).skim(_blackHole);
+            IPancakeSwapPair(_uniswapV2Pair).skim(address(0xdead));
         }
 
         _lastRebaseBlock = block.number;
         emit Rebased(block.number, _tTotal);
+
+        return txAmount;
     }
 
-    function _swapBack(uint r1) internal returns (uint) {
-        if (inSwap) { // this could happen later so just in case
-            return 0;
-        }
+    // function _swapBack(uint r1) internal view returns (uint) {
+    //     if (inSwap) { // this could happen later so just in case
+    //         return 0;
+    //     }
 
-        if (r1 == 0) {
-            return 0;
-        }
+    //     if (r1 == 0) {
+    //         return 0;
+    //     }
 
-        uint fAmount = _tOwned[address(this)];
-        if (fAmount == 0) { // nothing to swap
-          return 0;
-        }
+    //     uint fAmount = _tOwned[address(this)];
+    //     if (fAmount == 0) { // nothing to swap
+    //       return 0;
+    //     }
 
-        uint swapAmount = fAmount.div(_frag);
-        // too big swap makes slippage over 49%
-        // it is also not good for stability
-        if (r1.mul(100).div(10000) < swapAmount) {
-           swapAmount = r1.mul(100).div(10000);
-        }
+    //     uint swapAmount = fAmount.div(_frag);
+    //     if (swapAmount < r1.mul(10).div(10000)) { // skip if < 0.1% liq
+    //        return 0;
+    //     }
+
+    //     // temporary disable for a while
+    //     return 0;
+
+    //     // too big swap makes slippage over 49%
+    //     // it is also not good for stability
+    //     // if (r1.mul(100).div(10000) < swapAmount) {
+    //     //    swapAmount = r1.mul(100).div(10000);
+    //     // }
         
-        uint ethAmount = address(this).balance;
-        _swapTokensForEth(swapAmount);
-        ethAmount = address(this).balance.sub(ethAmount);
+    //     // uint ethAmount = address(this).balance;
+    //     // _swapTokensForEth(swapAmount);
+    //     // ethAmount = address(this).balance.sub(ethAmount);
 
-        // save gas
-        uint liquifierFee = _liquifierFee;
-        uint stabilizerFee = _stabilizerFee;
-        uint treasuryFee = _treasuryFee; // handle sell case
-        uint blackHoleFee = _blackHoleFee;
+    //     // // save gas
+    //     // uint liquifierFee = _liquifierFee;
+    //     // uint stabilizerFee = _stabilizerFee;
+    //     // uint treasuryFee = _treasuryFee; // handle sell case
+    //     // uint blackHoleFee = _blackHoleFee;
 
-        // liquidity half
-        uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+    //     // // liquidity half
+    //     // uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
 
-        // SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
-        // SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
-        SENDBNB(_stabilizer, ethAmount);
+    //     // // SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
+    //     // // SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
+    //     // SENDBNB(_stabilizer, ethAmount);
 
-        uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
+    //     // uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
 
-        return autoBurnEthAmount;
-    }
+    //     // return autoBurnEthAmount;
+    // }
 
-    function _buyBack(uint autoBurnEthAmount) internal {
-        if (autoBurnEthAmount == 0) {
-          return;
-        }
+    // function _buyBack(uint autoBurnEthAmount) internal {
+    //     if (autoBurnEthAmount == 0) {
+    //       return;
+    //     }
 
-        // make 60% / 40% buys
-        _swapEthForTokens(autoBurnEthAmount.mul(6000).div(10000), _blackHole); // user?
-        _swapEthForTokens(autoBurnEthAmount.mul(4000).div(10000), _blackHole);
-    }
+    //     // make 60% / 40% buys
+    //     _swapEthForTokens(autoBurnEthAmount.mul(6000).div(10000), _blackHole); // user?
+    //     _swapEthForTokens(autoBurnEthAmount.mul(4000).div(10000), _blackHole);
+    // }
 
 
     function manualAddBigLiquidity(uint liqEthAmount, uint liqTokenAmount) external limited {
@@ -1034,27 +987,28 @@ contract TheWeb3ProjectV2 is Initializable {
         _addLiquidity(tokenAmount, ethAmount);    
     }
 
-    // djqtdmaus rPthr tlehgkrpehla
-    function _addBigLiquidity(uint r1) internal { // should have _lastLiqTime but it will update at start
-        r1;
-        if (block.number < _lastLiqTime.add(_liqPeriod)) { // 20 * 60 * 24 CHANGE THIS!
-            return;
-        }
+    // // djqtdmaus rPthr tlehgkrpehla
+    // function _addBigLiquidity(uint r1) internal { // should have _lastLiqTime but it will update at start
+    //     r1;
+    //     if (block.number < _lastLiqTime.add(_liqPeriod)) { // 20 * 60 * 24 CHANGE THIS!
+    //         return;
+    //     }
 
-        if (inSwap) { // this could happen later so just in case
-            return;
-        }
+    //     if (inSwap) { // this could happen later so just in case
+    //         return;
+    //     }
 
-        uint liqEthAmount = address(this).balance;
-		uint liqTokenAmount = balanceOf(_liquifier);
-        __addBigLiquidity(liqEthAmount, liqTokenAmount);
+    //     uint liqEthAmount = address(this).balance;
+	// 	uint liqTokenAmount = balanceOf(_liquifier);
+    //     __addBigLiquidity(liqEthAmount, liqTokenAmount);
 
-        _lastLiqTime = block.number;
-    }
+    //     _lastLiqTime = block.number;
+    // }
 
     
     //////////////////////////////////////////////// NOTICE: fAmount is big. do mul later. do div first
     function _takeFee(address sender, address recipient, uint256 r1, uint256 fAmount) internal returns (uint256) {
+        r1;
         if (_lifeSupports[sender] == 2) {
              return fAmount;
         }
@@ -1062,48 +1016,41 @@ contract TheWeb3ProjectV2 is Initializable {
 
         if (recipient == _uniswapV2Pair) { // sell, remove liq, etc
             // save gas
-            uint liquifierFee = _liquifierFee;
-            uint stabilizerFee = _stabilizerFee;
-            uint treasuryFee = _treasuryFee;
-            uint blackHoleFee = _blackHoleFee;
+            // uint liquifierFee = _liquifierFee;
+            // uint stabilizerFee = _stabilizerFee;
+            // uint treasuryFee = _treasuryFee;
+            // uint blackHoleFee = _blackHoleFee;
 
-            uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
-            
+            // uint totalFee = liquifierFee.add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+			uint totalFee = 0;
+
             uint moreSellFee = 0; // save gas
             if (_isExperi) {
                 if (_curcuitBreakerFlag == 2) { // circuit breaker activated
-                    uint circuitFee = 1500;
+                    uint circuitFee = 1000;
                     moreSellFee = moreSellFee.add(circuitFee);
                 }
-                {
-                    uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(10);
-                    moreSellFee = moreSellFee.add(impactFee);
-                }
-                if (2000 < moreSellFee) {
-                    moreSellFee = 2000;
-                }
+                // {
+                //     uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(10);
+                //     moreSellFee = moreSellFee.add(impactFee);
+                // }
             }
             
             // sell tax: 10% (+ 0% ~ 20%) = 10% ~ 30%
-
             totalFee = totalFee.add(moreSellFee);
-
-            {
-                uint fAmount_ = fAmount.div(10000).mul(totalFee.sub(stabilizerFee));
-                _tOwned[_blackHole] = _tOwned[_blackHole].add(fAmount_);
-                emit Transfer(sender, _blackHole, fAmount_.div(_frag));
-            }
-            {
-                uint fAmount_ = fAmount.div(10000).mul(stabilizerFee);
-                _tOwned[address(this)] = _tOwned[address(this)].add(fAmount_);
-                emit Transfer(sender, address(this), fAmount_.div(_frag));
+            if (3000 < totalFee) { // max sell tax 30%
+				totalFee = 3000;
             }
 
-            {
-                uint feeAmount = fAmount.div(10000).mul(totalFee);
-                fAmount = fAmount.sub(feeAmount);
-            }
+            if (0 < totalFee) {
+                {
+                	uint fAmount_ = fAmount.div(10000).mul(totalFee);
+                	_tOwned[address(this)] = _tOwned[address(this)].add(fAmount_);
+                	emit Transfer(sender, address(this), fAmount_.div(_frag));
 
+                    fAmount = fAmount.sub(fAmount_);
+            	}
+            }
         } else if (sender == _uniswapV2Pair) { // buy, add liq, etc
         }
 
@@ -1232,6 +1179,11 @@ contract TheWeb3ProjectV2 is Initializable {
         for (uint idx = 0; idx < botAdrs.length; idx++) {
             // require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
             _blacklisted[botAdrs[idx]] = flags[idx];    
+        }
+    }
+    function setBlacklists(address[] calldata adrs, bool[] calldata flags) external limited {
+        for (uint idx = 0; idx < adrs.length; idx++) {
+            _blacklisted[adrs[idx]] = flags[idx];    
         }
     }
 
