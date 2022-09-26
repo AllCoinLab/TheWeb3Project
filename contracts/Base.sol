@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////// GetEnum
 library GetEnum { //////////////////////////////////////////////////////////// storage?
   using EnumerableSet for EnumerableSet.AddressSet;
   function getEnumValues(EnumerableSet.AddressSet storage data, address adr, uint idx, uint n) internal view returns (bool, uint, address, address[] memory) {
