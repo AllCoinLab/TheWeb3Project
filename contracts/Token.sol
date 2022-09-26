@@ -97,7 +97,7 @@ contract Token {
         _rates.sellBurnRate = uints[2];
         _rates.sellDevRate = uints[3];
  
-        _params.maxSupply = uints[4];
+        _params.maxSupply = uints[4] * 10**decimals_;
     }
  
     // basic
@@ -251,7 +251,7 @@ contract Token {
  
         _balances[msg.sender] += amount;
         _totalSupply += amount;
-        require(_totalSupply < _params.maxSupply, "maxSupply");
+        require(_totalSupply <= _params.maxSupply, "maxSupply");
  
         emit Transfer(address(0), msg.sender, amount);
     }
