@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.2;
  
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "https://github.com/AllCoinLab/TheWeb3Project/blob/main/contracts/Base.sol";
  
-interface IPcsF {
-    function getPair(address tAdr, address bAdr) external view returns (address);
-}
- 
+
 contract Token {
     using EnumerableSet for EnumerableSet.AddressSet;
  
