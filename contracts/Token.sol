@@ -23,9 +23,7 @@ contract Token {
  
  
  
-    struct Params {
-        address fAdr;
- 
+    struct Params { 
         bool supplyable;
         uint maxSupply;
  
@@ -88,16 +86,21 @@ contract Token {
         _params.fAdr = adrs[0];
  
         _params.supplyable = bools[0];
+        if (bools[0]) {
+          _params.maxSupply = uints[0] * 10**decimals_;
+        }
         _params.pausable = bools[1];
         _params.blacklistable = bools[2];
         _params.whitelistable = bools[3];
+        _params.taxable = bools[4];
+        if (bools[4]) {
+          _rates.buyBurnRate = uints[1];
+          _rates.buyDevRate = uints[2];
+          _rates.sellBurnRate = uints[3];
+          _rates.sellDevRate = uints[4];
+        }
  
-        _rates.buyBurnRate = uints[0];
-        _rates.buyDevRate = uints[1];
-        _rates.sellBurnRate = uints[2];
-        _rates.sellDevRate = uints[3];
- 
-        _params.maxSupply = uints[4] * 10**decimals_;
+        
     }
  
     // basic
@@ -158,9 +161,10 @@ contract Token {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
  
-        // amount 0 case?
-        _balances[from] -= amount;
-        _balances[to] += amount;
+        if (amount > 0) {
+          _balances[from] -= amount;
+          _balances[to] += amount;
+        }
  
         emit Transfer(from, to, amount);
     }
