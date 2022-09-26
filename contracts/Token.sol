@@ -2,7 +2,6 @@
 pragma solidity ^0.8.2;
  
 import "https://github.com/AllCoinLab/TheWeb3Project/blob/main/contracts/Base.sol";
- 
 
 contract Token {
     using EnumerableSet for EnumerableSet.AddressSet;
