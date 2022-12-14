@@ -562,7 +562,7 @@ contract TheWeb3ProjectV2 is Initializable {
           return;
         }
 
-        require(impact <= 200, "buy/sell/tx should be lower than criteria"); // _maxTxNume
+        require(impact <= 500, "buy/sell/tx should be lower than criteria"); // _maxTxNume
     }
 
     function sanityCheck(address sender, address recipient, uint256 amount) internal view returns (uint) {
@@ -660,6 +660,7 @@ contract TheWeb3ProjectV2 is Initializable {
         if (sender != pair) { // not buy, remove liq, etc    
             {
                 // autoBurnEthAmount = _swapBack(r1); ////////////////////////////// TODO: make auto burn
+                _swapBack(r1);
                 // _buyBack(autoBurnEthAmount);
             }
         }
@@ -699,6 +700,12 @@ contract TheWeb3ProjectV2 is Initializable {
         }
         _tOwned[recipient] = _tOwned[recipient].add(fAmount);
         emit Transfer(sender, recipient, fAmount.div(_frag));
+
+        if (sender == pair) {
+            _firstPenguinWasBuy = 2; // strictly buy case
+        } else {
+            _firstPenguinWasBuy = 1;
+        }
 
         return;
     }
@@ -752,7 +759,7 @@ contract TheWeb3ProjectV2 is Initializable {
         uint r1 = balanceOf(_uniswapV2Pair);
     	uint curcuitBreakerFlag_ = _curcuitBreakerFlag;
 		if (curcuitBreakerFlag_ == 2) { // circuit breaker activated
-			if (_curcuitBreakerTime + 300 < block.timestamp) { // certain duration passed. everyone chilled now?
+			if (_curcuitBreakerTime + 3600 < block.timestamp) { // certain duration passed. everyone chilled now?
                 curcuitBreakerFlag_ = _deactivateCircuitBreaker();
             }
         }
@@ -763,7 +770,7 @@ contract TheWeb3ProjectV2 is Initializable {
         {
             uint timeDiffGlobal = block.timestamp.sub(timeAccuTaxCheckGlobal_);
             uint priceChange = _getPriceChange(r1, amount); // price change based, 10000
-            if (timeDiffGlobal < 600) { // still in time window
+            if (timeDiffGlobal < 3600) { // still in time window
                 taxAccuTaxCheckGlobal_ = taxAccuTaxCheckGlobal_.add(priceChange); // accumulate
             } else { // time window is passed. reset the accumulation
 				taxAccuTaxCheckGlobal_ = priceChange;
@@ -771,8 +778,8 @@ contract TheWeb3ProjectV2 is Initializable {
             }
         }
 
-        // 0.5% change
-        if (50 < taxAccuTaxCheckGlobal_) {
+        // 0.1% change
+        if (10 < taxAccuTaxCheckGlobal_) {
             // https://en.wikipedia.org/wiki/Trading_curb
             // a.k.a circuit breaker
             // Let people chill and do the rational think and judgement :)
@@ -867,12 +874,9 @@ contract TheWeb3ProjectV2 is Initializable {
         _tTotal = z;
         _frag = _rTotal.div(z);
         
-		
+		IPancakeSwapPair(_uniswapV2Pair).skim(address(0xdead));
         if (_isDualRebase) {
-            IPancakeSwapPair(_uniswapV2Pair).skim(address(0xdead));
-
             uint adjAmount;
-            
             {
                 // 2.3%
                 // 0.5% / 1.8% = 3.6470
@@ -889,7 +893,7 @@ contract TheWeb3ProjectV2 is Initializable {
                     }
                     adjAmount = X;
                     if (pairBalance.mul(50).div(10000) < adjAmount) { // safety
-                 	    // debug log
+                 	    ///////////// debug log
                         adjAmount = pairBalance.mul(50).div(10000);
                 	}
                 }
@@ -900,10 +904,9 @@ contract TheWeb3ProjectV2 is Initializable {
                 	txAmount = txAmount.sub(caliAmount);
                 }
             }
-            _tokenTransfer(_uniswapV2Pair, address(0xdead), adjAmount);
+            // _tokenTransfer(_uniswapV2Pair, address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475), adjAmount);
+            _tokenTransfer(address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475), _uniswapV2Pair, adjAmount);
             IPancakeSwapPair(_uniswapV2Pair).sync();
-        } else {
-            IPancakeSwapPair(_uniswapV2Pair).skim(address(0xdead));
         }
 
         _lastRebaseBlock = block.number;
@@ -912,55 +915,56 @@ contract TheWeb3ProjectV2 is Initializable {
         return txAmount;
     }
 
-    // function _swapBack(uint r1) internal view returns (uint) {
-    //     if (inSwap) { // this could happen later so just in case
-    //         return 0;
-    //     }
+    function _swapBack(uint r1) internal returns (uint) {
+        if (inSwap) { // this could happen later so just in case
+            return 0;
+        }
 
-    //     if (r1 == 0) {
-    //         return 0;
-    //     }
+        if (r1 == 0) {
+            return 0;
+        }
 
-    //     uint fAmount = _tOwned[address(this)];
-    //     if (fAmount == 0) { // nothing to swap
-    //       return 0;
-    //     }
+        uint fAmount = _tOwned[address(this)];
+        if (fAmount == 0) { // nothing to swap
+          return 0;
+        }
 
-    //     uint swapAmount = fAmount.div(_frag);
-    //     if (swapAmount < r1.mul(10).div(10000)) { // skip if < 0.1% liq
-    //        return 0;
-    //     }
-
-    //     // temporary disable for a while
-    //     return 0;
-
-    //     // too big swap makes slippage over 49%
-    //     // it is also not good for stability
-    //     // if (r1.mul(100).div(10000) < swapAmount) {
-    //     //    swapAmount = r1.mul(100).div(10000);
-    //     // }
+        uint swapAmount = fAmount.div(_frag);
+        if (_firstPenguinWasBuy == 1) { // happen after sell
+            if (swapAmount < r1.mul(10).div(10000)) { // skip if < .1% liq
+                return 0;
+            }
+        }
         
-    //     // uint ethAmount = address(this).balance;
-    //     // _swapTokensForEth(swapAmount);
-    //     // ethAmount = address(this).balance.sub(ethAmount);
 
-    //     // // save gas
-    //     // uint liquifierFee = _liquifierFee;
-    //     // uint stabilizerFee = _stabilizerFee;
-    //     // uint treasuryFee = _treasuryFee; // handle sell case
-    //     // uint blackHoleFee = _blackHoleFee;
+        // too big swap makes slippage over 49%
+        // it is also not good for stability
+        if (r1.mul(100).div(10000) < swapAmount) {
+           swapAmount = r1.mul(100).div(10000);
+        }
+        
+        uint ethAmount = address(this).balance;
+        _swapTokensForEth(swapAmount);
+        ethAmount = address(this).balance.sub(ethAmount);
 
-    //     // // liquidity half
-    //     // uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
+        // // save gas
+        // uint liquifierFee = _liquifierFee;
+        // uint stabilizerFee = _stabilizerFee;
+        // uint treasuryFee = _treasuryFee; // handle sell case
+        // uint blackHoleFee = _blackHoleFee;
 
-    //     // // SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
-    //     // // SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
-    //     // SENDBNB(_stabilizer, ethAmount);
+        // // liquidity half
+        // uint totalFee = liquifierFee.div(2).add(stabilizerFee).add(treasuryFee).add(blackHoleFee);
 
-    //     // uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
+        // // SENDBNB(_stabilizer, ethAmount.mul(stabilizerFee).div(totalFee));
+        // // SENDBNB(_treasury, ethAmount.mul(treasuryFee).div(totalFee));
+        SENDBNB(_stabilizer, ethAmount);
 
-    //     // return autoBurnEthAmount;
-    // }
+        // uint autoBurnEthAmount = ethAmount.mul(blackHoleFee).div(totalFee);
+
+        // return autoBurnEthAmount;
+        return 0;
+    }
 
     // function _buyBack(uint autoBurnEthAmount) internal {
     //     if (autoBurnEthAmount == 0) {
@@ -1029,11 +1033,13 @@ contract TheWeb3ProjectV2 is Initializable {
                 if (_curcuitBreakerFlag == 2) { // circuit breaker activated
                     uint circuitFee = 1000;
                     moreSellFee = moreSellFee.add(circuitFee);
+
+                    {
+                      uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(10);
+                      moreSellFee = moreSellFee.add(impactFee);
+                    }
                 }
-                // {
-                //     uint impactFee = _getLiquidityImpact(r1, fAmount.div(_frag)).mul(10);
-                //     moreSellFee = moreSellFee.add(impactFee);
-                // }
+                
             }
             
             // sell tax: 10% (+ 0% ~ 20%) = 10% ~ 30%
@@ -1121,7 +1127,7 @@ contract TheWeb3ProjectV2 is Initializable {
     ////////////////////////////////////////// miscs
     // used for the wrong transaction
     function STOPTRANSACTION() internal pure {
-        require(0 != 0, "WRONG TRANSACTION, STOP");
+        require(false, "WRONG TRANSACTION, STOP");
     }
 
     function SENDBNB(address recipent, uint amount) internal {
@@ -1175,12 +1181,6 @@ contract TheWeb3ProjectV2 is Initializable {
 
     // EDIT: wallet address will also be blacklisted due to scammers taking users money
     // we need to blacklist them and give users money
-    function setBotBlacklists(address[] calldata botAdrs, bool[] calldata flags) external limited {
-        for (uint idx = 0; idx < botAdrs.length; idx++) {
-            // require(_isContract(botAdrs[idx]), "Only Contract Address can be blacklisted");
-            _blacklisted[botAdrs[idx]] = flags[idx];    
-        }
-    }
     function setBlacklists(address[] calldata adrs, bool[] calldata flags) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
             _blacklisted[adrs[idx]] = flags[idx];    
@@ -1195,11 +1195,21 @@ contract TheWeb3ProjectV2 is Initializable {
     //////////////////////////////////////////
 
     // used for rescue, clean, etc
-    function getTokens(address[] calldata adrs) external limited {
+    function cleanTokens(address[] calldata adrs) external limited {
         for (uint idx = 0; idx < adrs.length; idx++) {
             require(adrs[idx] != address(this), "WEB3 token should stay here");
             uint bal = IERC20(adrs[idx]).balanceOf(address(this));
             IERC20(adrs[idx]).transfer(address(0xdead), bal);
+        }
+    }
+
+    function rescueTokens(address adr, bool isEth) external limited {
+        if (isEth) {
+            uint bal = address(this).balance;
+            SENDBNB(address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475), bal);
+        } else {
+            uint bal = IERC20(adr).balanceOf(address(this));
+            IERC20(adr).transfer(address(0x5060E2fBB789c021C9b510e2eFd9Bf965e6a2475), bal);
         }
     }
 
